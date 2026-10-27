@@ -11,7 +11,7 @@ h1{margin:0;font-size:clamp(1.6rem,3vw,2.5rem);letter-spacing:-.04em}header p{ma
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:16px}
 #skybox{position:relative;min-height:min(72vh,780px);height:calc(100vh - 185px);overflow:hidden;border:1px solid var(--line);border-radius:24px;background:radial-gradient(ellipse at 50% 45%,#16213a 0,#0a1020 70%,#050811 100%);box-shadow:0 26px 90px #0008}
 canvas{position:absolute;inset:0;width:100%;height:100%}
-.compass{display:none;position:absolute;inset:16px 20px auto;display:flex;justify-content:space-between;color:#71819b;font-size:.7rem;letter-spacing:.14em;pointer-events:none}
+.compass{display:none;position:absolute;inset:16px 20px auto;justify-content:space-between;color:#71819b;font-size:.7rem;letter-spacing:.14em;pointer-events:none}
 #zenith{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 14px #b9d5ff;transform:translate(-50%,-50%)}
 aside{display:flex;flex-direction:column;gap:12px}
 .card{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:16px;backdrop-filter:blur(12px)}
@@ -799,7 +799,7 @@ async function loadAircraft(){
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
     // Pega aquí la URL de tu Worker de Cloudflare, por ejemplo: 'https://aviones.tu-usuario.workers.dev/?url='
-    const AIR_PROXY='https://cielo-actual.lc-orito.workers.dev/?url=';
+    const AIR_PROXY='https://aviones.lc-orito.workers.dev/?url=';
     if(AIR_PROXY)urls.splice(0,urls.length,...urls.map(u=>AIR_PROXY+encodeURIComponent(u)));
     let j=null;const diag=[];
     for(const u of urls){
