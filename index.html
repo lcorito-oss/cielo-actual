@@ -772,16 +772,26 @@ function render(){
  document.querySelector('#count').textContent=String(starsVisible)+' estrellas · '+bodies.filter(x=>x.alt>0).length+' planetas/Luna';
 }
 function tickClock(){const d=new Date();document.querySelector('#clock').textContent=d.toLocaleTimeString('es-MX',{hour12:false});document.querySelector('#date').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});if(Astronomy){bodies=[];for(const name of ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Moon'])try{const c=bodyCoords(Astronomy.Body[name],d),h=Astronomy.Horizon(d,observer,c.ra/15,c.dec,'normal');bodies.push({alt:h.altitude,az:h.azimuth,color:name==='Mars'?'#ff957b':name==='Venus'?'#ffe4a0':'#dce8ff',moon:name==='Moon'});}catch(e){}}render();}
+const PROXY='https://aviones.lc-orito.workers.dev/?url=';
 const TLE_TTL=2*3600*1000;
 async function getTLE(group){
   const key='tle:'+group;let cached=null;
   try{cached=JSON.parse(localStorage.getItem(key)||'null');}catch(e){}
   if(cached&&Date.now()-cached.at<TLE_TTL)return cached.text;
   try{
-    const r=await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP='+group+'&FORMAT=tle');
-    if(!r.ok)throw Error('HTTP '+r.status);
-    const text=await r.text();
-    if(!/^1 /m.test(text))throw Error('CelesTrak: '+text.trim().slice(0,80));
+    const target='https://celestrak.org/NORAD/elements/gp.php?GROUP='+group+'&FORMAT=tle';
+    let text=null,lastErr=null;
+    // Primero vía Worker (caché de 2 h, IP distinta); si falla, directo.
+    for(const u of [PROXY+encodeURIComponent(target),target]){
+      try{
+        const r=await fetch(u);
+        if(!r.ok)throw Error('HTTP '+r.status);
+        const t=await r.text();
+        if(!/^1 /m.test(t))throw Error('CelesTrak: '+t.trim().slice(0,80));
+        text=t;break;
+      }catch(e){lastErr=e;}
+    }
+    if(!text)throw lastErr;
     try{localStorage.setItem(key,JSON.stringify({at:Date.now(),text}));}catch(e){}
     return text;
   }catch(e){if(cached)return cached.text;throw e;}
@@ -799,7 +809,7 @@ async function loadAircraft(){
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
     // Pega aquí la URL de tu Worker de Cloudflare, por ejemplo: 'https://aviones.tu-usuario.workers.dev/?url='
-    const AIR_PROXY='https://aviones.lc-orito.workers.dev/?url=';
+    const AIR_PROXY=PROXY;
     if(AIR_PROXY)urls.splice(0,urls.length,...urls.map(u=>AIR_PROXY+encodeURIComponent(u)));
     let j=null;const diag=[];
     for(const u of urls){
