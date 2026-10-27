@@ -11,7 +11,7 @@ h1{margin:0;font-size:clamp(1.6rem,3vw,2.5rem);letter-spacing:-.04em}header p{ma
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:16px}
 #skybox{position:relative;min-height:min(72vh,780px);height:calc(100vh - 185px);overflow:hidden;border:1px solid var(--line);border-radius:24px;background:radial-gradient(ellipse at 50% 45%,#16213a 0,#0a1020 70%,#050811 100%);box-shadow:0 26px 90px #0008}
 canvas{position:absolute;inset:0;width:100%;height:100%}
-.compass{position:absolute;inset:16px 20px auto;display:flex;justify-content:space-between;color:#71819b;font-size:.7rem;letter-spacing:.14em;pointer-events:none}
+.compass{display:none;position:absolute;inset:16px 20px auto;display:flex;justify-content:space-between;color:#71819b;font-size:.7rem;letter-spacing:.14em;pointer-events:none}
 #zenith{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 14px #b9d5ff;transform:translate(-50%,-50%)}
 aside{display:flex;flex-direction:column;gap:12px}
 .card{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:16px;backdrop-filter:blur(12px)}
@@ -743,7 +743,7 @@ function altAz(ra,dec,date){const d=date.getTime()/86400000+2440587.5-2451545;co
 const alt=Math.asin(Math.sin(lat)*Math.sin(dc)+Math.cos(lat)*Math.cos(dc)*Math.cos(ha));
 const az=Math.atan2(-Math.sin(ha)*Math.cos(dc),Math.sin(dc)*Math.cos(lat)-Math.cos(dc)*Math.sin(lat)*Math.cos(ha));
 return {alt:alt/R,az:(az/R+360)%360};}
-function project(alt,az,w,h){if(alt<0)return null;const radius=(90-alt)/90*.43*Math.min(w,h);return{x:w/2+Math.sin(az*R)*radius,y:h/2-Math.cos(az*R)*radius};}
+function project(alt,az,w,h){if(alt<0)return null;const radius=(90-alt)/90*.43*Math.min(w,h);return{x:w/2+Math.sin(az*R)*radius,y:h/2+Math.cos(az*R)*radius};}
 function bodyCoords(body,date){const eq=Astronomy.Equator(body,date,observer,true,true);return {ra:eq.ra*15,dec:eq.dec};}
 function render(){
  const box=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2),w=box.width,h=box.height;
@@ -752,7 +752,7 @@ function render(){
  // Malla horizontal: círculos de altitud cada 15° y radios de azimut cada 30°.
  const cx=w/2,cy=h/2,gridR=.43*Math.min(w,h);ctx.save();ctx.font='10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
  for(let deg=0;deg<=90;deg+=15){const rad=(90-deg)/90*gridR;ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.strokeStyle=deg===0?'#d4e2fb88':'#b8c9ed4d';ctx.lineWidth=deg===0?1.2:1;ctx.stroke();if(deg>0) {ctx.fillStyle='#bdcce5e6';ctx.fillText(deg+'°',cx+8,cy-rad+9);}}
- for(let az=0;az<360;az+=30){const a=az*R,x=cx+Math.sin(a)*gridR,y=cy-Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed48';ctx.lineWidth=1;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy-Math.cos(a)*(gridR+11);ctx.fillStyle='#c2d3edee';ctx.fillText(az+'°',lx,ly);}
+ for(let az=0;az<360;az+=30){const a=az*R,x=cx+Math.sin(a)*gridR,y=cy+Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed48';ctx.lineWidth=1;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy+Math.cos(a)*(gridR+11),card={0:'N',90:'E',180:'S',270:'O'}[az];ctx.fillStyle=card?'#ffffff':'#c2d3edee';ctx.font=card?'700 12px system-ui':'10px system-ui';ctx.fillText(card||az+'°',lx,ly);}
  ctx.restore();
  // Vía Láctea: banda tenue siguiendo el plano galáctico aproximado.
  for(let l=0;l<360;l+=2){const br=0,lr=l*R,xe=-.05487556*Math.cos(lr)-.87343709*Math.sin(lr),ye=.49410943*Math.cos(lr)-.44482963*Math.sin(lr),ze=-.86766615*Math.cos(lr)-.19807637*Math.sin(lr);
@@ -766,7 +766,7 @@ function render(){
  // Cuerpos del sistema solar con Astronomy Engine.
  for(const x of bodies){const p=project(x.alt,x.az,w,h);if(!p)continue;ctx.fillStyle=x.color;ctx.shadowColor=x.color;ctx.shadowBlur=9;ctx.beginPath();ctx.arc(p.x,p.y,x.moon?4:3,0,Math.PI*2);ctx.fill();}
  ctx.shadowBlur=0;
- for(const x of planes){const q=project(x.alt,x.az,w,h);if(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(x.heading*R);ctx.fillStyle='#ffcf86';ctx.shadowColor='#ffb454';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(3,4);ctx.lineTo(0,2);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();}}
+ for(const x of planes){const q=project(x.alt,x.az,w,h);if(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-x.heading)*R);ctx.fillStyle='#ffcf86';ctx.shadowColor='#ffb454';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(3,4);ctx.lineTo(0,2);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();}}
  for(const x of satPositions){const q=project(x.alt,x.az,w,h);if(q){const active=selectedSatellite===x.id;ctx.fillStyle=active?'#ffffff':'#85f1cc';ctx.shadowColor=active?'#ffffff':'#85f1cc';ctx.shadowBlur=active?18:10;ctx.beginPath();ctx.arc(q.x,q.y,active?5:2.7,0,Math.PI*2);ctx.fill();if(active){ctx.strokeStyle='#a8f3db';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q.x,q.y,10,0,Math.PI*2);ctx.stroke();ctx.font='600 12px system-ui';ctx.textAlign='left';ctx.textBaseline='middle';const label=x.id.length>22?x.id.slice(0,22)+'…':x.id,pad=5,tw=ctx.measureText(label).width;ctx.fillStyle='#07111ceb';ctx.fillRect(q.x+13,q.y-10,tw+pad*2,20);ctx.fillStyle='#eafff8';ctx.fillText(label,q.x+13+pad,q.y);}}}
  ctx.shadowBlur=0;
  document.querySelector('#count').textContent=String(starsVisible)+' estrellas · '+bodies.filter(x=>x.alt>0).length+' planetas/Luna';
@@ -784,6 +784,13 @@ async function loadAircraft(){
       'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
+    // Respaldo si el navegador bloquea por CORS: reintenta vía proxies públicos.
+    // Si tienes tu propio Worker de Cloudflare, ponlo aquí (termina en ?url=).
+    const AIR_PROXY='';
+    const base=urls[0];
+    if(AIR_PROXY)urls.unshift(AIR_PROXY+encodeURIComponent(base));
+    urls.push('https://corsproxy.io/?url='+encodeURIComponent(base));
+    urls.push('https://api.allorigins.win/raw?url='+encodeURIComponent(base));
     let j=null;const diag=[];
     for(const u of urls){
       const host=new URL(u).hostname;
