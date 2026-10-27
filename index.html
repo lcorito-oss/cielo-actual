@@ -17,7 +17,7 @@ aside{display:flex;flex-direction:column;gap:12px}
 .card{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:16px;backdrop-filter:blur(12px)}
 .card h2{margin:0 0 10px;font-size:.77rem;letter-spacing:.16em;color:#a8bad5;text-transform:uppercase}
 #clock{font-size:1.6rem;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-#date,#place{color:var(--muted);font-size:.82rem}#sat-list{max-height:220px;overflow:auto}.sat-item{display:flex;align-items:baseline;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:7px 6px!important}.sat-item:hover,.sat-item:focus-visible,.sat-item.is-active{background:#85f1cc18;outline:none}.sat-item .sat-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e6fff6}.sat-item .small{flex:none;font-size:.68rem}
+#date,#place{color:var(--muted);font-size:.82rem}#sat-list{max-height:220px;overflow:auto}.sat-item{display:flex;align-items:baseline;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:7px 6px!important}.sat-item:hover,.sat-item:focus-visible,.sat-item.is-active{background:#85f1cc18;outline:none}.sat-item .sat-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e6fff6}.sat-item .small{flex:none;font-size:.68rem}.air-item:hover,.air-item:focus-visible,.air-item.is-active{background:#ffcf8620}.air-item .sat-name{color:#fff0d6}.air-item{flex-wrap:wrap}.air-item .air-alt{flex-basis:100%;color:var(--muted);font-size:.72rem}
 .row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:8px;padding:8px 0;border-top:1px solid #ffffff10;font-size:.78rem}.row>span:first-child{white-space:nowrap}.row span:last-child{font-size:.75rem;overflow-wrap:anywhere}
 .row span:last-child{color:#dce8ff;text-align:right}
  .small{color:var(--muted);font-size:.78rem}.event-meta{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}.event-kind{display:inline-block;margin-right:6px;padding:2px 7px;border:1px solid #ffffff20;border-radius:99px;color:#bcd1f1;font-size:.65rem;letter-spacing:.04em}.event-active{border:1px solid #f2b76666;border-radius:10px;background:linear-gradient(90deg,#f2b7661a,transparent);padding:9px 8px!important}.event-active .event-kind{border-color:#f2b76688;background:#f2b76620;color:#ffd28b}
@@ -736,7 +736,7 @@ const SKY_STARS = [
   [102395,311.2398,-66.2032,3.42],
 ];
 const galaxies=[[10.6847,41.2692],[23.4621,30.6599],[148.8882,69.0653],[148.9685,69.6797],[202.4696,47.1953],[210.8024,54.3489],[189.9979,-11.623],[204.253,-29.865]];
-const canvas=document.querySelector('#sky'),ctx=canvas.getContext('2d');let selectedSatellite=null;
+const canvas=document.querySelector('#sky'),ctx=canvas.getContext('2d');let selectedSatellite=null,selectedAircraft=null;
 let starsVisible=0,bodies=[],planes=[],satPositions=[];const trails=new Map(),TRAIL_MS=7*60*1000;
 function recordTrails(kind,items){const now=Date.now(),seen=new Set();for(const item of items){const id=item.id;if(!id)continue;seen.add(kind+':'+id);const key=kind+':'+id,points=trails.get(key)||[];points.push({alt:item.alt,az:item.az,at:now});while(points.length&&now-points[0].at>TRAIL_MS)points.shift();trails.set(key,points);}for(const [key,points] of trails){while(points.length&&now-points[0].at>TRAIL_MS)points.shift();if(!points.length)trails.delete(key);}}
 function altAz(ra,dec,date){const d=date.getTime()/86400000+2440587.5-2451545;const lst=((280.46061837+360.98564736629*d+LON)%360+360)%360*R,ha=lst-ra*R,dc=dec*R,lat=LAT*R;
@@ -751,8 +751,8 @@ function render(){
  const now=new Date();starsVisible=0;
  // Malla horizontal: círculos de altitud cada 15° y radios de azimut cada 30°.
  const cx=w/2,cy=h/2,gridR=.43*Math.min(w,h);ctx.save();ctx.font='10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
- for(let deg=0;deg<=90;deg+=15){const rad=(90-deg)/90*gridR;ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.strokeStyle=deg===0?'#d4e2fb88':'#b8c9ed4d';ctx.lineWidth=deg===0?1.2:1;ctx.stroke();if(deg>0) {ctx.fillStyle='#bdcce5e6';ctx.fillText(deg+'°',cx+8,cy-rad+9);}}
- for(let az=0;az<360;az+=30){const a=az*R,x=cx+Math.sin(a)*gridR,y=cy+Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed48';ctx.lineWidth=1;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy+Math.cos(a)*(gridR+11),card={0:'N',90:'E',180:'S',270:'O'}[az];ctx.fillStyle=card?'#ffffff':'#c2d3edee';ctx.font=card?'700 12px system-ui':'10px system-ui';ctx.fillText(card||az+'°',lx,ly);}
+ for(let deg=0;deg<=90;deg+=15){const rad=(90-deg)/90*gridR;ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.strokeStyle=deg===0?'#d4e2fb40':'#b8c9ed1a';ctx.lineWidth=deg===0?1:.8;ctx.stroke();if(deg>0) {ctx.fillStyle='#bdcce55c';ctx.fillText(deg+'°',cx+8,cy-rad+9);}}
+ for(let az=0;az<360;az+=30){const a=az*R,x=cx+Math.sin(a)*gridR,y=cy+Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed12';ctx.lineWidth=.8;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy+Math.cos(a)*(gridR+11),card={0:'N',90:'E',180:'S',270:'O'}[az];ctx.fillStyle=card?'#ffffffa6':'#c2d3ed66';ctx.font=card?'700 12px system-ui':'10px system-ui';ctx.fillText(card||az+'°',lx,ly);}
  ctx.restore();
  // Vía Láctea: banda tenue siguiendo el plano galáctico aproximado.
  for(let l=0;l<360;l+=2){const br=0,lr=l*R,xe=-.05487556*Math.cos(lr)-.87343709*Math.sin(lr),ye=.49410943*Math.cos(lr)-.44482963*Math.sin(lr),ze=-.86766615*Math.cos(lr)-.19807637*Math.sin(lr);
@@ -766,7 +766,21 @@ function render(){
  // Cuerpos del sistema solar con Astronomy Engine.
  for(const x of bodies){const p=project(x.alt,x.az,w,h);if(!p)continue;ctx.fillStyle=x.color;ctx.shadowColor=x.color;ctx.shadowBlur=9;ctx.beginPath();ctx.arc(p.x,p.y,x.moon?4:3,0,Math.PI*2);ctx.fill();}
  ctx.shadowBlur=0;
- for(const x of planes){const q=project(x.alt,x.az,w,h);if(q){ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-x.heading)*R);ctx.fillStyle='#ffcf86';ctx.shadowColor='#ffb454';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(3,4);ctx.lineTo(0,2);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();}}
+ for(const x of planes){
+  const q=project(x.alt,x.az,w,h);
+  if(!q)continue;
+  const active=selectedAircraft===x.id;
+  ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-x.heading)*R);if(active)ctx.scale(1.7,1.7);
+  ctx.fillStyle=active?'#fff3d9':'#ffcf86';ctx.shadowColor=active?'#ffd28b':'#ffb454';ctx.shadowBlur=active?18:8;
+  ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(3,4);ctx.lineTo(0,2);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();
+  if(active){
+    ctx.save();ctx.strokeStyle='#ffb454';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q.x,q.y,14,0,Math.PI*2);ctx.stroke();
+    ctx.font='600 12px system-ui';ctx.textAlign='left';ctx.textBaseline='middle';
+    const nm=x.flight.length>22?x.flight.slice(0,22)+'…':x.flight,label=nm+(x.ft!=null?' · '+Math.round(x.ft).toLocaleString('es-MX')+' ft':''),pad=5,tw=ctx.measureText(label).width;
+    ctx.fillStyle='#1a1006eb';ctx.fillRect(q.x+18,q.y-10,tw+pad*2,20);
+    ctx.fillStyle='#fff0d6';ctx.fillText(label,q.x+18+pad,q.y);ctx.restore();
+  }
+}
  for(const x of satPositions){const q=project(x.alt,x.az,w,h);if(q){const active=selectedSatellite===x.id;ctx.fillStyle=active?'#ffffff':'#85f1cc';ctx.shadowColor=active?'#ffffff':'#85f1cc';ctx.shadowBlur=active?18:10;ctx.beginPath();ctx.arc(q.x,q.y,active?5:2.7,0,Math.PI*2);ctx.fill();if(active){ctx.strokeStyle='#a8f3db';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q.x,q.y,10,0,Math.PI*2);ctx.stroke();ctx.font='600 12px system-ui';ctx.textAlign='left';ctx.textBaseline='middle';const label=x.id.length>22?x.id.slice(0,22)+'…':x.id,pad=5,tw=ctx.measureText(label).width;ctx.fillStyle='#07111ceb';ctx.fillRect(q.x+13,q.y-10,tw+pad*2,20);ctx.fillStyle='#eafff8';ctx.fillText(label,q.x+13+pad,q.y);}}}
  ctx.shadowBlur=0;
  document.querySelector('#count').textContent=String(starsVisible)+' estrellas · '+bodies.filter(x=>x.alt>0).length+' planetas/Luna';
@@ -799,7 +813,7 @@ async function getTLE(group){
 async function loadSatellites(){try{const t=(await getTLE('visual')).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];
 for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});}}recordTrails('sat',satPositions);updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
-}catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.<br><span class="small">Detalle: '+escapeHtml(e.message)+'</span></li>';}}
+}catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
 async function loadAircraft(){
   try{
     const la=LAT.toFixed(4),lo=LON.toFixed(4);
@@ -830,20 +844,21 @@ async function loadAircraft(){
         const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-2050;
         const alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;
         const name=(a.flight||a.hex||'Aeronave').trim();
-        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:name};
+        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:name,ft:Number.isFinite(Number(a.alt_baro))?Number(a.alt_baro):(Number.isFinite(Number(a.alt_geom))?Number(a.alt_geom):null)};
       })
       .filter(a=>a.alt>0);
     recordTrails('air',planes);
-    const list=planes.slice(0,5).map(a=>'<li>'+escapeHtml(a.flight)+' <span class="small">señal ADS-B</span></li>').join('');
+    const list=planes.slice(0,5).map(a=>'<li class="sat-item air-item" tabindex="0" role="button" data-aircraft="'+escapeHtml(a.id)+'"><span class="sat-name">'+escapeHtml(a.flight)+'</span><span class="small">Az '+Math.round(a.az)+'° · Alt '+Math.round(a.alt)+'°</span><span class="air-alt">Altitud '+fmtAlt(a.ft)+'</span></li>').join('');
     document.querySelector('#air-list').innerHTML=list||'<li class="empty">No se reciben aeronaves en el radio de 100 millas.</li>';
     document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';
     render();
   }catch(e){
     console.error('Aeronaves:',e);
     document.querySelector('#air-list').innerHTML='<li class="empty">El servicio de aeronaves no respondió. Se volverá a intentar.</li>';
-    document.querySelector('#air-note').textContent='Detalle: '+e.message;
+    document.querySelector('#air-note').textContent='';
   }
 }
+function fmtAlt(ft){return ft==null?'altitud n/d':Math.round(ft).toLocaleString('es-MX')+' ft · '+Math.round(ft*.3048).toLocaleString('es-MX')+' m';}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const celestialEvents=[];let starlinkNotice='';let eventsBusy=false;
 function localDateTime(d){return d.toLocaleString('es-MX',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
@@ -864,6 +879,10 @@ function updateStarlinkEvent(){const starlinks=satPositions.filter(s=>s.id&&s.id
 const showers=[{name:'Oriónidas',start:[10,2],end:[11,7],peak:[10,21],rate:'media'},{name:'Táuridas del Sur',start:[9,10],end:[11,20],peak:[11,5],rate:'baja'},{name:'Táuridas del Norte',start:[10,20],end:[12,10],peak:[11,12],rate:'baja'},{name:'Leónidas',start:[11,6],end:[11,30],peak:[11,17],rate:'media'},{name:'Gemínidas',start:[12,4],end:[12,20],peak:[12,14],rate:'alta'},{name:'Cuadrántidas',start:[12,28],end:[1,12],peak:[1,3],rate:'alta'}];
 function meteorInfo(){const d=new Date(),m=d.getMonth()+1,day=d.getDate(),active=showers.filter(s=>{const n=m*100+day,start=s.start[0]*100+s.start[1],end=s.end[0]*100+s.end[1];return start<=end?n>=start&&n<=end:n>=start||n<=end;});document.querySelector('#meteor').textContent=active.length?'Activa: '+active.map(x=>x.name).join(', ')+'. Los meteoros individuales no se pueden predecir; el calendario indica periodos y máximos aproximados.':'No hay una lluvia mayor activa hoy. Los meteoros esporádicos pueden aparecer en cualquier noche.';}
 const satList=document.querySelector('#sat-list');satList.addEventListener('pointerover',e=>{const row=e.target.closest('[data-satellite]');if(row){selectedSatellite=row.dataset.satellite;row.classList.add('is-active');render();}});satList.addEventListener('pointerout',e=>{const row=e.target.closest('[data-satellite]');if(row&&!row.contains(e.relatedTarget)){selectedSatellite=null;row.classList.remove('is-active');render();}});satList.addEventListener('focusin',e=>{const row=e.target.closest('[data-satellite]');if(row){selectedSatellite=row.dataset.satellite;row.classList.add('is-active');render();}});satList.addEventListener('focusout',e=>{if(!satList.contains(e.relatedTarget)){selectedSatellite=null;satList.querySelectorAll('.is-active').forEach(row=>row.classList.remove('is-active'));render();}});
+const airList=document.querySelector('#air-list');
+function airOn(e){const row=e.target.closest('[data-aircraft]');if(row){selectedAircraft=row.dataset.aircraft;row.classList.add('is-active');render();}}
+function airOff(e){const row=e.target.closest('[data-aircraft]');if(row&&!row.contains(e.relatedTarget)){selectedAircraft=null;row.classList.remove('is-active');render();}}
+airList.addEventListener('pointerover',airOn);airList.addEventListener('pointerout',airOff);airList.addEventListener('focusin',airOn);airList.addEventListener('focusout',airOff);
 document.querySelector('#refresh').addEventListener('click',()=>{tickClock();loadSatellites();loadAircraft();meteorInfo();});
 if(!window.Astronomy)document.querySelector('#count').textContent='No cargó la librería astronómica';else tickClock();
 meteorInfo();loadCelestialEvents();loadSatellites();loadAircraft();setInterval(()=>{tickClock();loadSatellites();loadAircraft();meteorInfo();},60000);setInterval(loadCelestialEvents,15*60*1000);setInterval(renderEvents,60000);window.addEventListener('resize',render);
