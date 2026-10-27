@@ -15,6 +15,19 @@ Mapa astronómico en vivo para San Francisco del Oro, Chihuahua (26°52′ N, 10
 
 El mapa se actualiza cada minuto. La disponibilidad de satélites y aeronaves depende de los servicios y de la cobertura de datos. No se necesitan claves privadas.
 
+## Ubicación
+
+Por defecto el mapa usa San Francisco del Oro, Chihuahua (26°52′ N, 105°51′ O, 2,050 m). El selector **Ubicación** ofrece tres opciones:
+
+- **San Francisco del Oro:** la ubicación fija.
+- **Mi ubicación (GPS):** el navegador pide permiso y el mapa se recalcula para donde estés; si te mueves más de 1 km, se actualiza solo. En una PC sin GPS la posición se estima por Wi-Fi o IP, con menos precisión (basta para ver el cielo).
+- **Otra ubicación…:** escribe el nombre de una ciudad (búsqueda con [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api), sin clave) o coordenadas decimales como `28.63, -106.07` (longitud negativa = oeste). La última ubicación elegida queda guardada.
+
+Al cambiar de ubicación se recalculan estrellas, Luna, planetas, satélites, aeronaves y la pasada de la Estación Espacial. La elección se recuerda en el navegador.
+
+- La ubicación solo se usa en tu navegador, excepto para consultar aeronaves: la consulta incluye las coordenadas redondeadas a unos 1.1 km (dos decimales) y pasa por el Worker hacia adsb.lol. La búsqueda por nombre envía el texto escrito a Open-Meteo.
+- El GPS requiere HTTPS (GitHub Pages lo cumple). Si se deniega el permiso o falla, se vuelve a San Francisco del Oro.
+
 ## Publicar con GitHub Pages
 
 En el repositorio, abre **Settings → Pages**, selecciona la rama `main` y la carpeta `/ (root)`. GitHub Pages publicará `index.html`.

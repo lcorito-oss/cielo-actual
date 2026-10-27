@@ -37,14 +37,15 @@ aside{display:flex;flex-direction:column;gap:12px}
 ul{margin:0;padding:0;list-style:none}li{padding:9px 0;border-top:1px solid #ffffff10;font-size:.84rem}
 li:first-child{border-top:0;padding-top:0}.empty{color:var(--muted);font-size:.82rem}
 .toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;color:var(--muted);font-size:.76rem}
-button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color:var(--ink);padding:7px 13px;cursor:pointer}button:hover{border-color:#9fc4ff}.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px}select{background:#0b1220;color:var(--ink);border:1px solid #ffffff28;border-radius:999px;padding:6px 10px;font:inherit;cursor:pointer}select:hover{border-color:#9fc4ff}
+button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color:var(--ink);padding:7px 13px;cursor:pointer}button:hover{border-color:#9fc4ff}.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px}select{background:#0b1220;color:var(--ink);border:1px solid #ffffff28;border-radius:999px;padding:6px 10px;font:inherit;cursor:pointer}select:hover{border-color:#9fc4ff}#loc-panel{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}#loc-panel[hidden]{display:none}.loc-row{display:flex;gap:8px}#loc-q{flex:1;min-width:0;background:#0b1220;color:var(--ink);border:1px solid #ffffff28;border-radius:999px;padding:7px 13px;font:inherit}#loc-q:focus{outline:none;border-color:#9fc4ff}#loc-results{margin-top:8px}#loc-results:empty{margin:0}#loc-msg:empty{display:none}
 @media(max-width:850px){.layout{grid-template-columns:1fr}#skybox{height:65vh;min-height:420px}aside{display:grid;grid-template-columns:1fr}}
 @media(max-width:540px){main{padding:14px}header{align-items:flex-start;flex-direction:column;gap:8px}#skybox{height:58vh;min-height:360px;border-radius:18px}.compass{inset:12px}.layout{gap:10px}aside{gap:9px}.card{padding:13px}.card h2{font-size:.68rem}.row{font-size:.78rem}}
 </style></head><body><main>
-<header><div><h1>Cielo actual</h1><p>El cielo sobre San Francisco del Oro, Chihuahua</p></div><div class="live"><i></i>EN VIVO · actualiza cada minuto</div></header>
-<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de los últimos 7 min</span><span class="ctl"><label title="La parte de abajo del mapa es lo que tienes enfrente">Mirando hacia <select id="facing"><option value="0">el Norte</option><option value="90">el Este</option><option value="180">el Sur</option><option value="270">el Oeste</option></select></label><button id="refresh">Actualizar ahora</button></span></div></section>
+<header><div><h1>Cielo actual</h1><p id="where">El cielo sobre San Francisco del Oro, Chihuahua</p></div><div class="live"><i></i>EN VIVO · actualiza cada minuto</div></header>
+<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de los últimos 7 min</span><span class="ctl"><label>Ubicación <select id="loc"><option value="fixed">San Francisco del Oro</option><option value="gps">Mi ubicación (GPS)</option><option value="custom">Otra ubicación…</option></select></label><label title="La parte de abajo del mapa es lo que tienes enfrente">Mirando hacia <select id="facing"><option value="0">el Norte</option><option value="90">el Este</option><option value="180">el Sur</option><option value="270">el Oeste</option></select></label><button id="refresh">Actualizar ahora</button></span></div>
+<div id="loc-panel" hidden><div class="loc-row"><input id="loc-q" type="text" placeholder="Ciudad o coordenadas (ej. 28.63, -106.07)" autocomplete="off" aria-label="Buscar ubicación"><button id="loc-go">Buscar</button></div><ul id="loc-results"></ul><p class="small" id="loc-msg"></p></div></section>
 <aside>
-<section class="card"><h2>Observación local</h2><div id="clock">--:--:--</div><div id="date"></div><div id="place">26° 52′ N · 105° 51′ O</div><div class="row"><span>Objetos visibles</span><span id="count">Calculando…</span></div></section>
+<section class="card"><h2>Observación local</h2><div id="clock">--:--:--</div><div id="date"></div><div id="place">26° 52′ N · 105° 51′ O</div><div class="small" id="gps-note"></div><div class="row"><span>Objetos visibles</span><span id="count">Calculando…</span></div></section>
 <section class="card">
 <div class="tabs" role="tablist"><button class="tab is-on" role="tab" data-tab="sat">Satélites <b id="n-sat">0</b></button><button class="tab" role="tab" data-tab="air">Aeronaves <b id="n-air">0</b></button><button class="tab" role="tab" data-tab="ev">Eventos <b id="n-ev">0</b></button></div>
 <div class="panel" data-panel="sat"><ul id="sat-list"><li class="empty">Cargando órbitas recientes…</li></ul></div>
@@ -55,7 +56,8 @@ button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/dist/satellite.min.js"></script>
 <script>
-const LAT=26+52/60,LON=-(105+51/60),R=Math.PI/180,observer=new Astronomy.Observer(LAT,LON,2050);
+const FIXED={lat:26+52/60,lon:-(105+51/60),alt:2050,name:'San Francisco del Oro, Chihuahua'};
+let LAT=FIXED.lat,LON=FIXED.lon,ALT=FIXED.alt;const R=Math.PI/180;let observer=new Astronomy.Observer(LAT,LON,ALT);
 const SKY_STARS = [
   [32768,102.4839,-50.6144,2.94],
   [71683,219.9204,-60.8351,-0.01],
@@ -840,12 +842,12 @@ function buildSatTrail(obj,now){
   if(pts.length>1)trails.set('sat:'+obj.name,pts);
 }
 async function loadSatellites(){try{const t=(await getTLE('visual')).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];for(const k of [...trails.keys()])if(k.startsWith('sat:'))trails.delete(k);
-for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});buildSatTrail(obj,now);}}updateStarlinkEvent();
+for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:ALT/1000},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});buildSatTrail(obj,now);}}updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#n-sat').textContent=passes.length;document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
 }catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
 async function loadAircraft(){
   try{
-    const la=LAT.toFixed(4),lo=LON.toFixed(4);
+    const la=LAT.toFixed(2),lo=LON.toFixed(2);
     const urls=[
       'https://api.adsb.lol/v2/point/'+la+'/'+lo+'/100',
       'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
@@ -870,7 +872,7 @@ async function loadAircraft(){
         const p1=LAT*R,p2=a.lat*R,dl=(a.lon-LON)*R;
         const dist=6371000*Math.acos(Math.max(-1,Math.min(1,Math.sin(p1)*Math.sin(p2)+Math.cos(p1)*Math.cos(p2)*Math.cos(dl))));
         const az=Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl));
-        const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-2050;
+        const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-ALT;
         const alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;
         const name=(a.flight||a.hex||'Aeronave').trim();
         return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:name,ft:Number.isFinite(Number(a.alt_baro))?Number(a.alt_baro):(Number.isFinite(Number(a.alt_geom))?Number(a.alt_geom):null)};
@@ -901,7 +903,7 @@ function addMoonEvents(now){const names=['Luna nueva','Cuarto creciente','Luna l
 const eclipses=[['2027-02-06','Eclipse anular de Sol'],['2027-02-20','Eclipse penumbral de Luna'],['2027-07-18','Eclipse penumbral de Luna'],['2027-08-02','Eclipse total de Sol'],['2027-08-17','Eclipse penumbral de Luna'],['2028-01-12','Eclipse parcial de Luna'],['2028-07-06','Eclipse parcial de Luna'],['2028-12-31','Eclipse total de Luna']];
 function addEclipseEvents(){for(const [iso,title] of eclipses){const [y,m,d]=iso.split('-').map(Number),date=new Date(y,m-1,d);celestialEvents.push({date,dateOnly:true,kind:'Eclipse',title,detail:'Fenómeno global; su visibilidad local depende de la trayectoria.'});}}
 function addMeteorEvents(now){const {start,end}=weekWindow(now),seen=new Set();for(const shower of showers)for(let year=now.getFullYear()-1;year<=now.getFullYear()+1;year++){const from=new Date(year,shower.start[0]-1,shower.start[1]),to=new Date(year,shower.end[0]-1,shower.end[1]);if(to<from)to.setFullYear(to.getFullYear()+1);let peak=new Date(year,shower.peak[0]-1,shower.peak[1]);if(peak<from)peak.setFullYear(peak.getFullYear()+1);const active=now>=from&&now<=to;if(active&&!seen.has(shower.name)){seen.add(shower.name);celestialEvents.push({date:now,kind:'Meteoros',title:'Lluvia activa: '+shower.name,detail:'Máximo aproximado: '+localDate(peak)+'.',ongoing:true});}else if(peak>=now&&peak>=start&&peak<end&&!seen.has(shower.name)){seen.add(shower.name);celestialEvents.push({date:peak,dateOnly:true,kind:'Meteoros',title:'Máximo de '+shower.name,detail:'Lluvia de meteoros prevista para esta semana.'});}}}
-function satLookAt(satrec,date){const pv=satellite.propagate(satrec,date);if(!pv.position)return null;const gmst=satellite.gstime(date),ecf=satellite.eciToEcf(pv.position,gmst),look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},ecf);return {alt:look.elevation/R,az:look.azimuth/R};}
+function satLookAt(satrec,date){const pv=satellite.propagate(satrec,date);if(!pv.position)return null;const gmst=satellite.gstime(date),ecf=satellite.eciToEcf(pv.position,gmst),look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:ALT/1000},ecf);return {alt:look.elevation/R,az:look.azimuth/R};}
 async function addISSNextPass(now){try{const lines=(await getTLE('stations')).trim().split(/\r?\n/);let tle=null;for(let i=0;i+2<lines.length;i+=3)if(lines[i].toUpperCase().includes('ISS (ZARYA)')){tle=[lines[i+1],lines[i+2]];break;}if(!tle)return;const satrec=satellite.twoline2satrec(tle[0],tle[1]);let pass=null,last=satLookAt(satrec,now);if(last&&last.alt>=10){let expires=new Date(now.getTime()+15*60000);for(let minute=1;minute<=20;minute++){const at=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,at);if(p&&p.alt<10){expires=at;break;}}pass={date:now,now:true,expires};}else for(let minute=2;minute<=7*24*60;minute+=2){const date=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,date);if(p&&p.alt>=10){pass={date};break;}}if(pass)celestialEvents.push({date:pass.date,kind:'ISS',title:pass.now?'Estación Espacial Internacional sobre el horizonte':'Próxima pasada de la Estación Espacial Internacional',detail:'Pasada a más de 10° de altura; la visibilidad depende de iluminación y clima.',ongoing:!!pass.now,expires:pass.expires});}catch(e){/* Los demás eventos siguen disponibles si CelesTrak no responde. */}}
 async function loadCelestialEvents(){if(eventsBusy||!window.Astronomy||!window.satellite)return;eventsBusy=true;try{const now=new Date();celestialEvents.length=0;addMoonEvents(now);addEclipseEvents();addMeteorEvents(now);renderEvents();await addISSNextPass(now);renderEvents();}finally{eventsBusy=false;}}
 function updateStarlinkEvent(){const starlinks=satPositions.filter(s=>s.id&&s.id.toUpperCase().includes('STARLINK'));let found=false;for(let i=0;i<starlinks.length&&!found;i++){let nearby=0;for(let j=0;j<starlinks.length;j++){const a=starlinks[i],b=starlinks[j],dot=Math.sin(a.alt*R)*Math.sin(b.alt*R)+Math.cos(a.alt*R)*Math.cos(b.alt*R)*Math.cos((a.az-b.az)*R);if(Math.acos(Math.max(-1,Math.min(1,dot)))/R<4)nearby++;}if(nearby>=3)found=true;}starlinkNotice=found?'Tren Starlink detectado':'';renderEvents();}
@@ -931,6 +933,90 @@ document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.panel').forEach(p=>{p.hidden=p.dataset.panel!==b.dataset.tab;});
   selectedSatellite=null;selectedAircraft=null;render();
 }));
+function dms(v,pos,neg){const a=Math.abs(v);let d=Math.floor(a),m=Math.round((a-d)*60);if(m===60){d++;m=0;}return d+'° '+String(m).padStart(2,'0')+'′ '+(v>=0?pos:neg);}
+function distKm(a,b){const dLat=(b.lat-a.lat)*R,dLon=(b.lon-a.lon)*R,x=Math.sin(dLat/2)**2+Math.cos(a.lat*R)*Math.cos(b.lat*R)*Math.sin(dLon/2)**2;return 12742*Math.asin(Math.sqrt(x));}
+function useLocation(lat,lon,alt,label,short){
+  LAT=lat;LON=lon;ALT=alt;
+  if(window.Astronomy)observer=new Astronomy.Observer(lat,lon,alt);
+  trails.clear();planes=[];satPositions=[];
+  document.querySelector('#place').textContent=dms(lat,'N','S')+' · '+dms(lon,'E','O');
+  document.querySelector('#where').textContent='El cielo sobre '+label;
+  document.title='Cielo actual · '+short;
+  tickClock();loadSatellites();loadAircraft();loadCelestialEvents();
+}
+const locSel=document.querySelector('#loc'),gpsNote=document.querySelector('#gps-note');
+let geoWatch=null,lastGeo=null;
+function saveLoc(v){try{localStorage.setItem('loc',v);}catch(e){}}
+function stopWatch(){if(geoWatch!==null&&navigator.geolocation)navigator.geolocation.clearWatch(geoWatch);geoWatch=null;lastGeo=null;}
+function backToFixed(msg){stopWatch();locSel.value='fixed';saveLoc('fixed');document.querySelector('#loc-panel').hidden=true;gpsNote.textContent=msg||'';useLocation(FIXED.lat,FIXED.lon,FIXED.alt,FIXED.name,'San Francisco del Oro');}
+function startGPS(){
+  if(!navigator.geolocation){backToFixed('Este navegador no ofrece ubicación. Se usa San Francisco del Oro.');return;}
+  gpsNote.textContent='Buscando tu ubicación…';
+  geoWatch=navigator.geolocation.watchPosition(pos=>{
+    const c=pos.coords,here={lat:c.latitude,lon:c.longitude},acc=c.accuracy;
+    gpsNote.textContent='Ubicación por GPS · precisión ±'+(acc>=1000?(acc/1000).toFixed(1)+' km':Math.round(acc)+' m');
+    if(lastGeo&&distKm(lastGeo,here)<1)return;
+    lastGeo=here;
+    useLocation(here.lat,here.lon,Number.isFinite(c.altitude)?c.altitude:0,'tu ubicación actual','tu ubicación');
+  },err=>{
+    const why={1:'Permiso de ubicación denegado.',2:'Ubicación no disponible.',3:'La ubicación tardó demasiado.'}[err.code]||'No se pudo obtener la ubicación.';
+    backToFixed(why+' Se usa San Francisco del Oro.');
+  },{enableHighAccuracy:false,maximumAge:60000,timeout:30000});
+}
+const locPanel=document.querySelector('#loc-panel'),locQ=document.querySelector('#loc-q'),locRes=document.querySelector('#loc-results'),locMsg=document.querySelector('#loc-msg'),customOpt=locSel.querySelector('option[value="custom"]');
+function loadCustom(){try{const c=JSON.parse(localStorage.getItem('loc-custom')||'null');return c&&Number.isFinite(c.lat)&&Number.isFinite(c.lon)&&c.name?c:null;}catch(e){return null;}}
+function applyCustom(c){
+  stopWatch();
+  try{localStorage.setItem('loc-custom',JSON.stringify(c));}catch(e){}
+  saveLoc('custom');locSel.value='custom';
+  const short=c.name.split(',')[0];customOpt.textContent='Otra: '+short;
+  gpsNote.textContent='Ubicación elegida manualmente';
+  useLocation(c.lat,c.lon,c.alt||0,c.name,short);
+}
+function parseCoords(t){const m=t.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/);if(!m)return null;const lat=+m[1],lon=+m[2];return Math.abs(lat)<=90&&Math.abs(lon)<=180?{lat,lon}:null;}
+async function searchPlace(){
+  const text=locQ.value.trim();locRes.textContent='';locMsg.textContent='';if(!text)return;
+  const xy=parseCoords(text);
+  if(xy){applyCustom({lat:xy.lat,lon:xy.lon,alt:0,name:'Coordenadas '+xy.lat.toFixed(3)+', '+xy.lon.toFixed(3)});locMsg.textContent='Ubicación aplicada.';return;}
+  locMsg.textContent='Buscando…';
+  try{
+    const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(text)+'&count=6&language=es&format=json');
+    if(!r.ok)throw Error('HTTP '+r.status);
+    const list=(await r.json()).results||[];
+    if(!list.length){locMsg.textContent='No encontré ese lugar. Prueba con otro nombre o con coordenadas (ej. 28.63, -106.07).';return;}
+    locMsg.textContent='';
+    for(const pl of list){
+      const nm=[pl.name,pl.admin1,pl.country].filter(Boolean).join(', ');
+      const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');
+      li.className='sat-item';li.tabIndex=0;li.setAttribute('role','button');
+      a.className='sat-name';a.textContent=nm;b.className='small';b.textContent=pl.latitude.toFixed(2)+', '+pl.longitude.toFixed(2);
+      li.append(a,b);
+      const pick=()=>{applyCustom({lat:pl.latitude,lon:pl.longitude,alt:Number.isFinite(pl.elevation)?pl.elevation:0,name:nm});locRes.textContent='';locMsg.textContent='Ubicación aplicada.';};
+      li.addEventListener('click',pick);
+      li.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+      locRes.appendChild(li);
+    }
+  }catch(e){console.warn('Búsqueda de lugar:',e);locMsg.textContent='No se pudo buscar por nombre. Escribe coordenadas, por ejemplo: 28.63, -106.07';}
+}
+document.querySelector('#loc-go').addEventListener('click',searchPlace);
+locQ.addEventListener('keydown',e=>{if(e.key==='Enter')searchPlace();});
+locSel.addEventListener('change',()=>{
+  const v=locSel.value;
+  if(v!=='gps')stopWatch();
+  locPanel.hidden=v!=='custom';
+  if(v==='gps'){saveLoc('gps');startGPS();}
+  else if(v==='fixed'){backToFixed('');}
+  else{
+    const c=loadCustom();
+    if(c)applyCustom(c);else{saveLoc('custom');gpsNote.textContent='Escribe una ciudad o coordenadas.';}
+    locQ.focus();
+  }
+});
+try{
+  const saved=localStorage.getItem('loc'),c=loadCustom();
+  if(saved==='gps'){locSel.value='gps';startGPS();}
+  else if(saved==='custom'&&c){applyCustom(c);}
+}catch(e){}
 const facing=document.querySelector('#facing');
 try{const saved=localStorage.getItem('facing');if(saved&&[...facing.options].some(o=>o.value===saved)){facing.value=saved;viewAz=Number(saved);}}catch(e){}
 facing.addEventListener('change',()=>{viewAz=Number(facing.value);try{localStorage.setItem('facing',facing.value);}catch(e){}render();});
