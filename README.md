@@ -6,10 +6,10 @@ Mapa astronómico en vivo para San Francisco del Oro, Chihuahua (26°52′ N, 10
 
 - Estrellas sobre el horizonte local, proyectadas con el cenit al centro; incluye una banda tenue de la Vía Láctea y galaxias sin etiquetas encima del mapa.
 - Posiciones de la Luna y los planetas calculadas para la hora actual.
-- Satélites del grupo visual de CelesTrak sobre el horizonte, con estelas de hasta 7 minutos y coordenadas de azimut/altitud resaltables desde la lista.
+- Satélites del grupo visual de CelesTrak sobre el horizonte, con estelas de hasta 7 minutos, una malla de azimut/altitud y coordenadas de cada satélite que se resaltan en el mapa al pasar el cursor por su nombre.
 - Próxima pasada de la Estación Espacial Internacional calculada con los elementos orbitales actuales de CelesTrak.
 - Aeronaves cercanas reportadas por ADS-B cuando hay receptores con cobertura, también con estelas de hasta 7 minutos.
-- Eventos celestes: cuartos lunares, Luna del cazador, eclipses próximos y detección de agrupaciones Starlink cuando aparecen en los datos visibles.
+- Eventos celestes de la semana (lunes a domingo): fases lunares, Luna del cazador, eclipses, lluvias de meteoros, agrupaciones Starlink y próxima pasada de la Estación Espacial Internacional. Los eventos activos aparecen con alerta; los ya ocurridos se retiran.
 - Lluvias de meteoros activas según su calendario estacional. Los meteoros individuales no se pueden anticipar.
 
 El mapa se actualiza cada minuto. La disponibilidad de satélites y aeronaves depende de los servicios y de la cobertura de datos. La aplicación no necesita claves privadas.
