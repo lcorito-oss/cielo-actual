@@ -23,13 +23,13 @@ aside{display:flex;flex-direction:column;gap:12px}
  .small{color:var(--muted);font-size:.78rem}.event-meta{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}.event-kind{display:inline-block;margin-right:6px;padding:2px 7px;border:1px solid #ffffff20;border-radius:99px;color:#bcd1f1;font-size:.65rem;letter-spacing:.04em}.event-active{border:1px solid #f2b76666;border-radius:10px;background:linear-gradient(90deg,#f2b7661a,transparent);padding:9px 8px!important}.event-active .event-kind{border-color:#f2b76688;background:#f2b76620;color:#ffd28b}
 ul{margin:0;padding:0;list-style:none}li{padding:9px 0;border-top:1px solid #ffffff10;font-size:.84rem}
 li:first-child{border-top:0;padding-top:0}.empty{color:var(--muted);font-size:.82rem}
-.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;color:var(--muted);font-size:.76rem}
-button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color:var(--ink);padding:7px 13px;cursor:pointer}button:hover{border-color:#9fc4ff}
+.toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;color:var(--muted);font-size:.76rem}
+button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color:var(--ink);padding:7px 13px;cursor:pointer}button:hover{border-color:#9fc4ff}.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px}select{background:#0b1220;color:var(--ink);border:1px solid #ffffff28;border-radius:999px;padding:6px 10px;font:inherit;cursor:pointer}select:hover{border-color:#9fc4ff}
 @media(max-width:850px){.layout{grid-template-columns:1fr}#skybox{height:65vh;min-height:420px}aside{display:grid;grid-template-columns:1fr}}
 @media(max-width:540px){main{padding:14px}header{align-items:flex-start;flex-direction:column;gap:8px}#skybox{height:58vh;min-height:360px;border-radius:18px}.compass{inset:12px}.layout{gap:10px}aside{gap:9px}.card{padding:13px}.card h2{font-size:.68rem}.row{font-size:.78rem}}
 </style></head><body><main>
 <header><div><h1>Cielo actual</h1><p>El cielo sobre San Francisco del Oro, Chihuahua</p></div><div class="live"><i></i>EN VIVO · actualiza cada minuto</div></header>
-<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de movimiento de los últimos 7 min</span><button id="refresh">Actualizar ahora</button></div></section>
+<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de los últimos 7 min</span><span class="ctl"><label title="La parte de abajo del mapa es lo que tienes enfrente">Mirando hacia <select id="facing"><option value="0">el Norte</option><option value="90">el Este</option><option value="180">el Sur</option><option value="270">el Oeste</option></select></label><button id="refresh">Actualizar ahora</button></span></div></section>
 <aside>
 <section class="card"><h2>Observación local</h2><div id="clock">--:--:--</div><div id="date"></div><div id="place">26° 52′ N · 105° 51′ O</div><div class="row"><span>Objetos visibles</span><span id="count">Calculando…</span></div></section>
 <section class="card">
@@ -738,7 +738,7 @@ const SKY_STARS = [
   [102395,311.2398,-66.2032,3.42],
 ];
 const galaxies=[[10.6847,41.2692],[23.4621,30.6599],[148.8882,69.0653],[148.9685,69.6797],[202.4696,47.1953],[210.8024,54.3489],[189.9979,-11.623],[204.253,-29.865]];
-const hits=[];
+const hits=[];let viewAz=0;
 const BODY_ES={Mercury:'Mercurio',Venus:'Venus',Mars:'Marte',Jupiter:'Júpiter',Saturn:'Saturno',Uranus:'Urano',Neptune:'Neptuno',Moon:'Luna'};
 const GALAXY_NAMES=['Galaxia de Andrómeda (M31)','Galaxia del Triángulo (M33)','Galaxia de Bode (M81)','Galaxia del Cigarro (M82)','Galaxia del Remolino (M51)','Galaxia del Molinete (M101)','Galaxia del Sombrero (M104)','Galaxia del Molinete Austral (M83)'];
 const STAR_NAMES={32349:['Sirio','Can Mayor'],30438:['Canopo','Quilla'],69673:['Arturo','Boyero'],71683:['Rigil Kentaurus (α Centauri)','Centauro'],91262:['Vega','Lira'],24608:['Capella','Auriga'],24436:['Rigel','Orión'],37279:['Proción','Can Menor'],7588:['Achernar','Erídano'],27989:['Betelgeuse','Orión'],68702:['Hadar','Centauro'],97649:['Altair','Águila'],60718:['Acrux','Cruz del Sur'],21421:['Aldebarán','Tauro'],80763:['Antares','Escorpio'],65474:['Spica','Virgo'],37826:['Pólux','Géminis'],113368:['Fomalhaut','Pez Austral'],102098:['Deneb','Cisne'],62434:['Mimosa','Cruz del Sur'],49669:['Régulo','Leo'],33579:['Adhara','Can Mayor'],36850:['Cástor','Géminis'],61084:['Gacrux','Cruz del Sur'],85927:['Shaula','Escorpio'],25336:['Bellatrix','Orión'],25428:['Elnath','Tauro'],45238:['Miaplacidus','Quilla'],26311:['Alnilam','Orión'],109268:['Alnair','Grulla'],26727:['Alnitak','Orión'],62956:['Alioth','Osa Mayor'],54061:['Dubhe','Osa Mayor'],34444:['Wezen','Can Mayor'],90185:['Kaus Australis','Sagitario'],15863:['Mirfak','Perseo'],41037:['Avior','Quilla'],86228:['Sargas','Escorpio'],67301:['Alkaid','Osa Mayor'],28360:['Menkalinan','Auriga'],82273:['Atria','Triángulo Austral'],31681:['Alhena','Géminis'],100751:['Peacock','Pavo'],11767:['Polaris (Estrella Polar)','Osa Menor'],46390:['Alphard','Hidra'],9884:['Hamal','Aries'],50583:['Algieba','Leo'],3419:['Diphda','Ballena'],677:['Alpheratz','Andrómeda'],27366:['Saiph','Orión'],72607:['Kochab','Osa Menor'],86032:['Ras Alhague','Ofiuco'],14576:['Algol','Perseo'],9640:['Almach','Andrómeda'],57632:['Denébola','Leo'],3179:['Schedar','Casiopea'],65378:['Mizar','Osa Mayor'],5447:['Mirach','Andrómeda'],68933:['Menkent','Centauro'],92855:['Nunki','Sagitario'],76267:['Alphecca','Corona Boreal'],53910:['Merak','Osa Mayor'],58001:['Phecda','Osa Mayor'],78401:['Dschubba','Escorpio'],78820:['Acrab','Escorpio'],84012:['Sabik','Ofiuco'],97278:['Tarazed','Águila'],113881:['Scheat','Pegaso'],113963:['Markab','Pegaso'],109074:['Sadalmelik','Acuario'],100453:['Sadr','Cisne'],102488:['Gienah (Cisne)','Cisne'],95947:['Albireo','Cisne'],87833:['Eltanin','Dragón'],85670:['Rastaban','Dragón'],77070:['Unukalhai','Serpiente'],14135:['Menkar','Ballena'],59803:['Gienah (Cuervo)','Cuervo'],61941:['Porrima','Virgo'],63608:['Vindemiatrix','Virgo'],26207:['Meissa','Orión'],25930:['Mintaka','Orión'],23875:['Cursa','Erídano'],25985:['Arneb','Liebre'],27628:['Phact','Paloma'],39429:['Naos','Popa'],44816:['Suhail','Vela'],39953:['Regor','Vela'],42913:['Alsephina','Vela'],45556:['Aspidiske','Quilla']};
@@ -750,7 +750,7 @@ function altAz(ra,dec,date){const d=date.getTime()/86400000+2440587.5-2451545;co
 const alt=Math.asin(Math.sin(lat)*Math.sin(dc)+Math.cos(lat)*Math.cos(dc)*Math.cos(ha));
 const az=Math.atan2(-Math.sin(ha)*Math.cos(dc),Math.sin(dc)*Math.cos(lat)-Math.cos(dc)*Math.sin(lat)*Math.cos(ha));
 return {alt:alt/R,az:(az/R+360)%360};}
-function project(alt,az,w,h){if(alt<0)return null;const radius=(90-alt)/90*.43*Math.min(w,h);return{x:w/2+Math.sin(az*R)*radius,y:h/2+Math.cos(az*R)*radius};}
+function project(alt,az,w,h){if(alt<0)return null;const radius=(90-alt)/90*.43*Math.min(w,h);return{x:w/2+Math.sin((az-viewAz)*R)*radius,y:h/2+Math.cos((az-viewAz)*R)*radius};}
 function bodyCoords(body,date){const eq=Astronomy.Equator(body,date,observer,true,true);return {ra:eq.ra*15,dec:eq.dec};}
 function render(){
  const box=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2),w=box.width,h=box.height;
@@ -759,7 +759,7 @@ function render(){
  // Malla horizontal: círculos de altitud cada 15° y radios de azimut cada 30°.
  const cx=w/2,cy=h/2,gridR=.43*Math.min(w,h);ctx.save();ctx.font='10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
  for(let deg=0;deg<=90;deg+=15){const rad=(90-deg)/90*gridR;ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.strokeStyle=deg===0?'#d4e2fb40':'#b8c9ed1a';ctx.lineWidth=deg===0?1:.8;ctx.stroke();if(deg>0) {ctx.fillStyle='#bdcce55c';ctx.fillText(deg+'°',cx+8,cy-rad+9);}}
- for(let az=0;az<360;az+=30){const a=az*R,x=cx+Math.sin(a)*gridR,y=cy+Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed12';ctx.lineWidth=.8;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy+Math.cos(a)*(gridR+11),card={0:'N',90:'E',180:'S',270:'O'}[az];ctx.fillStyle=card?'#ffffffa6':'#c2d3ed66';ctx.font=card?'700 12px system-ui':'10px system-ui';ctx.fillText(card||az+'°',lx,ly);}
+ for(let az=0;az<360;az+=30){const a=(az-viewAz)*R,x=cx+Math.sin(a)*gridR,y=cy+Math.cos(a)*gridR;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle='#b8c9ed12';ctx.lineWidth=.8;ctx.stroke();const lx=cx+Math.sin(a)*(gridR+11),ly=cy+Math.cos(a)*(gridR+11),card={0:'N',90:'E',180:'S',270:'O'}[az];ctx.fillStyle=card?'#ffffffa6':'#c2d3ed66';ctx.font=card?'700 12px system-ui':'10px system-ui';ctx.fillText(card||az+'°',lx,ly);}
  ctx.restore();
  // Vía Láctea: banda tenue siguiendo el plano galáctico aproximado.
  for(let l=0;l<360;l+=2){const br=0,lr=l*R,xe=-.05487556*Math.cos(lr)-.87343709*Math.sin(lr),ye=.49410943*Math.cos(lr)-.44482963*Math.sin(lr),ze=-.86766615*Math.cos(lr)-.19807637*Math.sin(lr);
@@ -778,7 +778,7 @@ function render(){
   if(!q)continue;
   hits.push({x:q.x,y:q.y,r:14,pri:0,kind:'Aeronave',title:x.flight,lines:['Altitud '+fmtAlt(x.ft),'Rumbo '+Math.round(x.heading)+'°','Az '+Math.round(x.az)+'° · Alt '+Math.round(x.alt)+'°']});
   const active=selectedAircraft===x.id;
-  ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-x.heading)*R);if(active)ctx.scale(1.7,1.7);
+  ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-(x.heading-viewAz))*R);if(active)ctx.scale(1.7,1.7);
   ctx.fillStyle=active?'#fff3d9':'#ffcf86';ctx.shadowColor=active?'#ffd28b':'#ffb454';ctx.shadowBlur=active?18:8;
   ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(3,4);ctx.lineTo(0,2);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();
   if(active){
@@ -910,6 +910,9 @@ document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.panel').forEach(p=>{p.hidden=p.dataset.panel!==b.dataset.tab;});
   selectedSatellite=null;selectedAircraft=null;render();
 }));
+const facing=document.querySelector('#facing');
+try{const saved=localStorage.getItem('facing');if(saved&&[...facing.options].some(o=>o.value===saved)){facing.value=saved;viewAz=Number(saved);}}catch(e){}
+facing.addEventListener('change',()=>{viewAz=Number(facing.value);try{localStorage.setItem('facing',facing.value);}catch(e){}render();});
 document.querySelector('#refresh').addEventListener('click',()=>{tickClock();loadSatellites();loadAircraft();meteorInfo();});
 if(!window.Astronomy)document.querySelector('#count').textContent='No cargó la librería astronómica';else tickClock();
 meteorInfo();loadCelestialEvents();loadSatellites();loadAircraft();setInterval(()=>{tickClock();loadSatellites();loadAircraft();meteorInfo();},60000);setInterval(loadCelestialEvents,15*60*1000);setInterval(renderEvents,60000);window.addEventListener('resize',render);

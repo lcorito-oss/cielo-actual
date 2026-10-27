@@ -5,7 +5,7 @@ Mapa astronómico en vivo para San Francisco del Oro, Chihuahua (26°52′ N, 10
 ## Qué muestra
 
 - Estrellas sobre el horizonte local, proyectadas con el cenit al centro; incluye una banda tenue de la Vía Láctea y galaxias sin etiquetas encima del mapa.
-- Orientación como al mirar hacia el cielo con el rostro al norte: **norte abajo, sur arriba, oeste a la izquierda y este a la derecha**. La malla de azimut/altitud es tenue, solo como referencia visual.
+- Orientación como al mirar el cielo recostado: la parte de abajo del mapa es lo que tienes enfrente. Por defecto se asume que miras al norte (**norte abajo, sur arriba, oeste a la izquierda y este a la derecha**). El selector **Mirando hacia** gira el mapa para que coincida con la dirección en la que estás de frente (norte, este, sur u oeste) y recuerda tu elección. La malla de azimut/altitud es tenue, solo como referencia visual.
 - Posiciones de la Luna y los planetas calculadas para la hora actual.
 - Satélites del grupo visual de CelesTrak sobre el horizonte, con estelas de hasta 7 minutos y coordenadas de cada satélite. Al pasar el cursor por su nombre en la tarjeta, se resalta en el mapa.
 - Aeronaves cercanas reportadas por ADS-B (radio de 100 millas), con estelas de hasta 7 minutos. Cada una muestra su azimut, su altura sobre el horizonte y su altitud real de vuelo (pies y metros). Al pasar el cursor por su nombre, se resalta en el mapa en color ámbar con una etiqueta de indicativo y altitud.
