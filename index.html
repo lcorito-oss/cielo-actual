@@ -34,7 +34,8 @@ button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color
 <section class="card"><h2>Observación local</h2><div id="clock">--:--:--</div><div id="date"></div><div id="place">26° 52′ N · 105° 51′ O</div><div class="row"><span>Objetos visibles</span><span id="count">Calculando…</span></div></section>
 <section class="card"><h2>Pasadas de satélites</h2><ul id="sat-list"><li class="empty">Cargando órbitas recientes…</li></ul></section>
 <section class="card"><h2>Aeronaves cercanas</h2><ul id="air-list"><li class="empty">Consultando señal ADS-B…</li></ul><p class="small" id="air-note"></p></section>
-<section class="card"><h2>Eventos celestes</h2><ul id="event-list"><li class="empty">Calculando próximos eventos…</li></ul><p class="small" id="event-note">Semana local: lunes a domingo · la lista se renueva cada lunes.</p></section>\n<section class="card"><h2>Meteoros</h2><div id="meteor" class="small">Consultando calendario de lluvias…</div></section>
+<section class="card"><h2>Eventos celestes</h2><ul id="event-list"><li class="empty">Calculando próximos eventos…</li></ul><p class="small" id="event-note">Semana local: lunes a domingo · la lista se renueva cada lunes.</p></section>
+<section class="card"><h2>Meteoros</h2><div id="meteor" class="small">Consultando calendario de lluvias…</div></section>
 </aside></div></main>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/dist/satellite.min.js"></script>
@@ -775,9 +776,43 @@ async function loadSatellites(){try{const r=await fetch('https://celestrak.org/N
 for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});}}recordTrails('sat',satPositions);updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
 }catch(e){document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
-async function loadAircraft(){try{const url='https://api.adsb.lol/v2/lat/'+LAT.toFixed(4)+'/lon/'+LON.toFixed(4)+'/dist/100';const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('feed');const j=await r.json();planes=(j.aircraft||[]).filter(a=>Number.isFinite(a.lat)&&Number.isFinite(a.lon)&&Number(a.seen_pos||0)<90).map(a=>{const p1=LAT*R,p2=a.lat*R,dl=(a.lon-LON)*R,dist=6371000*Math.acos(Math.max(-1,Math.min(1,Math.sin(p1)*Math.sin(p2)+Math.cos(p1)*Math.cos(p2)*Math.cos(dl)))),az=Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl)),height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-2050,alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:(a.flight||a.hex||'Aeronave').trim()};}).filter(a=>a.alt>0);recordTrails('air',planes);
-const list=planes.slice(0,5).map(a=>'<li>'+escapeHtml(a.flight)+' <span class="small">señal ADS-B</span></li>').join('');document.querySelector('#air-list').innerHTML=list||'<li class="empty">No se reciben aeronaves en el radio de 100 millas.</li>';document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';render();}
-catch(e){document.querySelector('#air-list').innerHTML='<li class="empty">El servicio de aeronaves no respondió. Se volverá a intentar.</li>';}}
+async function loadAircraft(){
+  try{
+    const la=LAT.toFixed(4),lo=LON.toFixed(4);
+    const urls=[
+      'https://api.adsb.lol/v2/point/'+la+'/'+lo+'/100',
+      'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
+      'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
+    ];
+    let j=null;
+    for(const u of urls){
+      try{
+        const r=await fetch(u,{cache:'no-store'});
+        if(r.ok){j=await r.json();break;}
+      }catch(e){}
+    }
+    if(!j)throw Error('feed');
+    planes=(j.aircraft||j.ac||[])
+      .filter(a=>a.alt_baro!=='ground'&&Number.isFinite(a.lat)&&Number.isFinite(a.lon)&&Number(a.seen_pos||0)<90)
+      .map(a=>{
+        const p1=LAT*R,p2=a.lat*R,dl=(a.lon-LON)*R;
+        const dist=6371000*Math.acos(Math.max(-1,Math.min(1,Math.sin(p1)*Math.sin(p2)+Math.cos(p1)*Math.cos(p2)*Math.cos(dl))));
+        const az=Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl));
+        const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-2050;
+        const alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;
+        const name=(a.flight||a.hex||'Aeronave').trim();
+        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:name};
+      })
+      .filter(a=>a.alt>0);
+    recordTrails('air',planes);
+    const list=planes.slice(0,5).map(a=>'<li>'+escapeHtml(a.flight)+' <span class="small">señal ADS-B</span></li>').join('');
+    document.querySelector('#air-list').innerHTML=list||'<li class="empty">No se reciben aeronaves en el radio de 100 millas.</li>';
+    document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';
+    render();
+  }catch(e){
+    document.querySelector('#air-list').innerHTML='<li class="empty">El servicio de aeronaves no respondió. Se volverá a intentar.</li>';
+  }
+}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const celestialEvents=[];let starlinkNotice='';let eventsBusy=false;
 function localDateTime(d){return d.toLocaleString('es-MX',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
