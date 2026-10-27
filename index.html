@@ -784,14 +784,16 @@ async function loadAircraft(){
       'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
-    let j=null;
+    let j=null;const diag=[];
     for(const u of urls){
+      const host=new URL(u).hostname;
       try{
         const r=await fetch(u,{cache:'no-store'});
         if(r.ok){j=await r.json();break;}
-      }catch(e){}
+        diag.push(host+': HTTP '+r.status);
+      }catch(e){diag.push(host+': '+e.message);}
     }
-    if(!j)throw Error('feed');
+    if(!j){console.warn('ADS-B:',diag);throw Error('Red · '+diag.join(' | '));}
     planes=(j.aircraft||j.ac||[])
       .filter(a=>a.alt_baro!=='ground'&&Number.isFinite(a.lat)&&Number.isFinite(a.lon)&&Number(a.seen_pos||0)<90)
       .map(a=>{
@@ -810,7 +812,9 @@ async function loadAircraft(){
     document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';
     render();
   }catch(e){
+    console.error('Aeronaves:',e);
     document.querySelector('#air-list').innerHTML='<li class="empty">El servicio de aeronaves no respondió. Se volverá a intentar.</li>';
+    document.querySelector('#air-note').textContent='Detalle: '+e.message;
   }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
