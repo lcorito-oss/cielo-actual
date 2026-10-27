@@ -831,8 +831,16 @@ async function getTLE(group){
     return text;
   }catch(e){if(cached)return cached.text;throw e;}
 }
-async function loadSatellites(){try{const t=(await getTLE('visual')).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];
-for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});}}recordTrails('sat',satPositions);updateStarlinkEvent();
+function buildSatTrail(obj,now){
+  const t1=now.getTime(),pts=[];
+  for(let t=t1-TRAIL_MS;t<=t1;t+=10000){
+    const p=satLookAt(obj.sat,new Date(t));
+    if(p)pts.push({alt:p.alt,az:((p.az%360)+360)%360,at:t});
+  }
+  if(pts.length>1)trails.set('sat:'+obj.name,pts);
+}
+async function loadSatellites(){try{const t=(await getTLE('visual')).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];for(const k of [...trails.keys()])if(k.startsWith('sat:'))trails.delete(k);
+for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});buildSatTrail(obj,now);}}updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#n-sat').textContent=passes.length;document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
 }catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
 async function loadAircraft(){
