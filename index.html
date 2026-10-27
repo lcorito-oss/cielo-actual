@@ -772,10 +772,24 @@ function render(){
  document.querySelector('#count').textContent=String(starsVisible)+' estrellas · '+bodies.filter(x=>x.alt>0).length+' planetas/Luna';
 }
 function tickClock(){const d=new Date();document.querySelector('#clock').textContent=d.toLocaleTimeString('es-MX',{hour12:false});document.querySelector('#date').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});if(Astronomy){bodies=[];for(const name of ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Moon'])try{const c=bodyCoords(Astronomy.Body[name],d),h=Astronomy.Horizon(d,observer,c.ra/15,c.dec,'normal');bodies.push({alt:h.altitude,az:h.azimuth,color:name==='Mars'?'#ff957b':name==='Venus'?'#ffe4a0':'#dce8ff',moon:name==='Moon'});}catch(e){}}render();}
-async function loadSatellites(){try{const r=await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle',{cache:'no-store'});if(!r.ok)throw Error('feed');const t=(await r.text()).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];
+const TLE_TTL=2*3600*1000;
+async function getTLE(group){
+  const key='tle:'+group;let cached=null;
+  try{cached=JSON.parse(localStorage.getItem(key)||'null');}catch(e){}
+  if(cached&&Date.now()-cached.at<TLE_TTL)return cached.text;
+  try{
+    const r=await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP='+group+'&FORMAT=tle');
+    if(!r.ok)throw Error('HTTP '+r.status);
+    const text=await r.text();
+    if(!/^1 /m.test(text))throw Error('CelesTrak: '+text.trim().slice(0,80));
+    try{localStorage.setItem(key,JSON.stringify({at:Date.now(),text}));}catch(e){}
+    return text;
+  }catch(e){if(cached)return cached.text;throw e;}
+}
+async function loadSatellites(){try{const t=(await getTLE('visual')).trim().split(/\r?\n/);let records=[];for(let i=0;i+2<t.length;i+=3){try{const sat=satellite.twoline2satrec(t[i+1],t[i+2]);records.push({name:t[i],sat});}catch(e){}}const now=new Date();satPositions=[];let passes=[];
 for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});}}recordTrails('sat',satPositions);updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
-}catch(e){document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
+}catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.<br><span class="small">Detalle: '+escapeHtml(e.message)+'</span></li>';}}
 async function loadAircraft(){
   try{
     const la=LAT.toFixed(4),lo=LON.toFixed(4);
@@ -784,18 +798,11 @@ async function loadAircraft(){
       'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
-    // Respaldo si el navegador bloquea por CORS: reintenta vía proxies públicos.
-    // Si tienes tu propio Worker de Cloudflare, ponlo aquí (termina en ?url=).
-    const AIR_PROXY='';
-    const base=urls[0];
-    if(AIR_PROXY)urls.unshift(AIR_PROXY+encodeURIComponent(base));
-    urls.push('https://corsproxy.io/?url='+encodeURIComponent(base));
-    urls.push('https://api.allorigins.win/raw?url='+encodeURIComponent(base));
     let j=null;const diag=[];
     for(const u of urls){
       const host=new URL(u).hostname;
       try{
-        const r=await fetch(u,{cache:'no-store'});
+        const r=await fetch(u);
         if(r.ok){j=await r.json();break;}
         diag.push(host+': HTTP '+r.status);
       }catch(e){diag.push(host+': '+e.message);}
@@ -838,7 +845,7 @@ const eclipses=[['2027-02-06','Eclipse anular de Sol'],['2027-02-20','Eclipse pe
 function addEclipseEvents(){for(const [iso,title] of eclipses){const [y,m,d]=iso.split('-').map(Number),date=new Date(y,m-1,d);celestialEvents.push({date,dateOnly:true,kind:'Eclipse',title,detail:'Fenómeno global; su visibilidad local depende de la trayectoria.'});}}
 function addMeteorEvents(now){const {start,end}=weekWindow(now),seen=new Set();for(const shower of showers)for(let year=now.getFullYear()-1;year<=now.getFullYear()+1;year++){const from=new Date(year,shower.start[0]-1,shower.start[1]),to=new Date(year,shower.end[0]-1,shower.end[1]);if(to<from)to.setFullYear(to.getFullYear()+1);let peak=new Date(year,shower.peak[0]-1,shower.peak[1]);if(peak<from)peak.setFullYear(peak.getFullYear()+1);const active=now>=from&&now<=to;if(active&&!seen.has(shower.name)){seen.add(shower.name);celestialEvents.push({date:now,kind:'Meteoros',title:'Lluvia activa: '+shower.name,detail:'Máximo aproximado: '+localDate(peak)+'.',ongoing:true});}else if(peak>=now&&peak>=start&&peak<end&&!seen.has(shower.name)){seen.add(shower.name);celestialEvents.push({date:peak,dateOnly:true,kind:'Meteoros',title:'Máximo de '+shower.name,detail:'Lluvia de meteoros prevista para esta semana.'});}}}
 function satLookAt(satrec,date){const pv=satellite.propagate(satrec,date);if(!pv.position)return null;const gmst=satellite.gstime(date),ecf=satellite.eciToEcf(pv.position,gmst),look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:2.05},ecf);return {alt:look.elevation/R,az:look.azimuth/R};}
-async function addISSNextPass(now){try{const r=await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',{cache:'no-store'});if(!r.ok)throw Error('tle');const lines=(await r.text()).trim().split(/\r?\n/);let tle=null;for(let i=0;i+2<lines.length;i+=3)if(lines[i].toUpperCase().includes('ISS (ZARYA)')){tle=[lines[i+1],lines[i+2]];break;}if(!tle)return;const satrec=satellite.twoline2satrec(tle[0],tle[1]);let pass=null,last=satLookAt(satrec,now);if(last&&last.alt>=10){let expires=new Date(now.getTime()+15*60000);for(let minute=1;minute<=20;minute++){const at=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,at);if(p&&p.alt<10){expires=at;break;}}pass={date:now,now:true,expires};}else for(let minute=2;minute<=7*24*60;minute+=2){const date=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,date);if(p&&p.alt>=10){pass={date};break;}}if(pass)celestialEvents.push({date:pass.date,kind:'ISS',title:pass.now?'Estación Espacial Internacional sobre el horizonte':'Próxima pasada de la Estación Espacial Internacional',detail:'Pasada a más de 10° de altura; la visibilidad depende de iluminación y clima.',ongoing:!!pass.now,expires:pass.expires});}catch(e){/* Los demás eventos siguen disponibles si CelesTrak no responde. */}}
+async function addISSNextPass(now){try{const lines=(await getTLE('stations')).trim().split(/\r?\n/);let tle=null;for(let i=0;i+2<lines.length;i+=3)if(lines[i].toUpperCase().includes('ISS (ZARYA)')){tle=[lines[i+1],lines[i+2]];break;}if(!tle)return;const satrec=satellite.twoline2satrec(tle[0],tle[1]);let pass=null,last=satLookAt(satrec,now);if(last&&last.alt>=10){let expires=new Date(now.getTime()+15*60000);for(let minute=1;minute<=20;minute++){const at=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,at);if(p&&p.alt<10){expires=at;break;}}pass={date:now,now:true,expires};}else for(let minute=2;minute<=7*24*60;minute+=2){const date=new Date(now.getTime()+minute*60000),p=satLookAt(satrec,date);if(p&&p.alt>=10){pass={date};break;}}if(pass)celestialEvents.push({date:pass.date,kind:'ISS',title:pass.now?'Estación Espacial Internacional sobre el horizonte':'Próxima pasada de la Estación Espacial Internacional',detail:'Pasada a más de 10° de altura; la visibilidad depende de iluminación y clima.',ongoing:!!pass.now,expires:pass.expires});}catch(e){/* Los demás eventos siguen disponibles si CelesTrak no responde. */}}
 async function loadCelestialEvents(){if(eventsBusy||!window.Astronomy||!window.satellite)return;eventsBusy=true;try{const now=new Date();celestialEvents.length=0;addMoonEvents(now);addEclipseEvents();addMeteorEvents(now);renderEvents();await addISSNextPass(now);renderEvents();}finally{eventsBusy=false;}}
 function updateStarlinkEvent(){const starlinks=satPositions.filter(s=>s.id&&s.id.toUpperCase().includes('STARLINK'));let found=false;for(let i=0;i<starlinks.length&&!found;i++){let nearby=0;for(let j=0;j<starlinks.length;j++){const a=starlinks[i],b=starlinks[j],dot=Math.sin(a.alt*R)*Math.sin(b.alt*R)+Math.cos(a.alt*R)*Math.cos(b.alt*R)*Math.cos((a.az-b.az)*R);if(Math.acos(Math.max(-1,Math.min(1,dot)))/R<4)nearby++;}if(nearby>=3)found=true;}starlinkNotice=found?'Tren Starlink detectado':'';renderEvents();}
 const showers=[{name:'Oriónidas',start:[10,2],end:[11,7],peak:[10,21],rate:'media'},{name:'Táuridas del Sur',start:[9,10],end:[11,20],peak:[11,5],rate:'baja'},{name:'Táuridas del Norte',start:[10,20],end:[12,10],peak:[11,12],rate:'baja'},{name:'Leónidas',start:[11,6],end:[11,30],peak:[11,17],rate:'media'},{name:'Gemínidas',start:[12,4],end:[12,20],peak:[12,14],rate:'alta'},{name:'Cuadrántidas',start:[12,28],end:[1,12],peak:[1,3],rate:'alta'}];
