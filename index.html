@@ -798,9 +798,12 @@ async function loadAircraft(){
       'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/100',
       'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/100'
     ];
+    // Pega aquí la URL de tu Worker de Cloudflare, por ejemplo: 'https://aviones.tu-usuario.workers.dev/?url='
+    const AIR_PROXY='https://cielo-actual.lc-orito.workers.dev/?url=';
+    if(AIR_PROXY)urls.splice(0,urls.length,...urls.map(u=>AIR_PROXY+encodeURIComponent(u)));
     let j=null;const diag=[];
     for(const u of urls){
-      const host=new URL(u).hostname;
+      const host=new URL(decodeURIComponent(u.split('?url=').pop())).hostname;
       try{
         const r=await fetch(u);
         if(r.ok){j=await r.json();break;}
