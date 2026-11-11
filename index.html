@@ -47,7 +47,19 @@ button{border:1px solid #ffffff28;border-radius:999px;background:#ffffff0c;color
 .legend i{width:9px;height:9px;border-radius:50%;background:var(--dot);box-shadow:0 0 8px var(--dot)}
 .legend .lg-star{--dot:#e5edff}.legend .lg-planet{--dot:#ff9e2c}.legend .lg-moon{--dot:#f5efe0}.legend .lg-sat{--dot:#85f1cc}.legend .lg-air{--dot:#ffcf86}
 .legend .lg-gal{--dot:#c8b7ff;background:transparent;box-shadow:none;border:2px solid #c8b7ff;width:11px;height:7px}
-#redmode[aria-pressed="true"]{background:#ff3b3026;border-color:#ff8a7a}
+/* Switch de modo rojo: interruptor deslizante bien visible (track de 64px, 44px de alto táctil). */
+#redmode{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:8px 14px 8px 16px;border:2px solid #ff8a7a;border-radius:999px;background:#1a0505;color:var(--ink);font-weight:700;font-size:.85rem;cursor:pointer}
+#redmode:focus-visible{outline:2px solid #ff3b30;outline-offset:3px}
+#redmode:hover{border-color:#ff3b30}
+.rm-label{white-space:nowrap}
+.rm-track{position:relative;flex:none;width:64px;height:30px;border-radius:999px;background:#0b1220;border:1px solid #ffffff30;transition:background .25s,border-color .25s,box-shadow .25s}
+.rm-knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0008;transition:transform .25s}
+.rm-knob::after{content:"";position:absolute;inset:0;margin:auto;width:8px;height:8px;border-radius:50%;background:#ff3b30}
+.rm-state{position:absolute;top:50%;right:7px;transform:translateY(-50%);color:#9baac2;font-size:.6rem;font-weight:800;letter-spacing:.05em}
+#redmode[aria-checked="true"] .rm-track{background:#ff3b30;border-color:#ff3b30;box-shadow:0 0 18px #ff3b3088}
+#redmode[aria-checked="true"] .rm-knob{transform:translateX(36px);background:#ffd9d4}
+#redmode[aria-checked="true"] .rm-state{right:auto;left:8px;color:#fff}
+@media (prefers-reduced-motion:reduce){.rm-track,.rm-knob{transition:none}}
 /* Modo rojo (visión nocturna): toda la interfaz en rojo tenue. */
 body.red-mode{--ink:#ffd9d4;--muted:#e08a80;--line:#ff5a4d33;--panel:#1a0505d9;background:radial-gradient(ellipse at 50% 0%,#2a0805 0,#120403 52%,#0a0201 100%)}
 body.red-mode #skybox{background:radial-gradient(ellipse at 50% 45%,#2a0a08 0,#120403 70%,#0a0201 100%)}
@@ -56,7 +68,7 @@ body.red-mode .live{color:#ff9a8a}body.red-mode .live i{background:#ff3b30;box-s
 body.red-mode .card h2{color:#ff9a8a}
 body.red-mode button,body.red-mode select{background:#1a0505;border-color:#ff5a4d55;color:#ffd9d4}
 body.red-mode button:hover,body.red-mode select:hover{border-color:#ff8a7a}
-body.red-mode #redmode[aria-pressed="true"]{background:#ff3b3040;border-color:#ff3b30;color:#fff}
+body.red-mode #redmode{border-color:#ff3b30;color:#ffd9d4}body.red-mode #redmode .rm-track{background:#2a0805;border-color:#ff5a4d}body.red-mode #redmode .rm-knob{background:#ffd9d4}body.red-mode #redmode[aria-checked="true"] .rm-track{background:#ff3b30;border-color:#ff3b30;box-shadow:0 0 18px #ff3b3088}body.red-mode #redmode .rm-state{color:#e08a80}
 body.red-mode .tab.is-on{background:#ff3b3026;border-color:#ff6b5e}
 body.red-mode #tip{background:#1a0505ee;border-color:#ff5a4d55;color:#ffd9d4}body.red-mode #tip b{color:#fff}body.red-mode #tip .k{color:#e08a80}
 body.red-mode .sat-item:hover,body.red-mode .sat-item:focus-visible,body.red-mode .sat-item.is-active{background:#ff3b3018}
@@ -70,7 +82,7 @@ body.red-mode .row span:last-child{color:#ffd9d4}
 body.red-mode .legend .lg-star{--dot:#d4554a}body.red-mode .legend .lg-planet{--dot:#ff3b30}body.red-mode .legend .lg-moon{--dot:#ffd9d4}body.red-mode .legend .lg-sat{--dot:#ff8a7a}body.red-mode .legend .lg-air{--dot:#ffb3a7}body.red-mode .legend .lg-gal{--dot:#a03026;border-color:#a03026}
 </style></head><body><main>
 <header><div><h1>Cielo actual</h1><p id="where">El cielo sobre San Francisco del Oro, Chihuahua</p></div><div class="live"><i></i>EN VIVO · actualiza cada minuto</div></header>
-<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de los últimos 7 min</span><span class="ctl"><label>Ubicación <select id="loc"><option value="fixed">San Francisco del Oro</option><option value="gps">Mi ubicación (GPS)</option><option value="custom">Otra ubicación…</option></select></label><label title="La parte de abajo del mapa es lo que tienes enfrente">Mirando hacia <select id="facing"><option value="0">el Norte</option><option value="90">el Este</option><option value="180">el Sur</option><option value="270">el Oeste</option></select></label><button id="refresh">Actualizar ahora</button><button id="redmode" aria-pressed="false" title="Modo rojo: toda la pantalla en rojo tenue para no perder la visión nocturna">Modo rojo</button></span></div>
+<div class="layout"><section><div id="skybox"><canvas id="sky"></canvas><div id="zenith"></div><div id="tip" hidden></div><div class="compass"><span>N</span><span>NE</span><span>E</span><span>SE</span><span>S</span><span>SO</span><span>O</span><span>NO</span></div></div><div class="toolbar"><span>Vista amplia · estelas de los últimos 7 min</span><span class="ctl"><label>Ubicación <select id="loc"><option value="fixed">San Francisco del Oro</option><option value="gps">Mi ubicación (GPS)</option><option value="custom">Otra ubicación…</option></select></label><label title="La parte de abajo del mapa es lo que tienes enfrente">Mirando hacia <select id="facing"><option value="0">el Norte</option><option value="90">el Este</option><option value="180">el Sur</option><option value="270">el Oeste</option></select></label><button id="refresh">Actualizar ahora</button><button id="redmode" role="switch" aria-checked="false" aria-pressed="false" title="Modo rojo: toda la pantalla en rojo tenue para no perder la visión nocturna"><span class="rm-label">Modo rojo</span><span class="rm-track" aria-hidden="true"><span class="rm-state">OFF</span><span class="rm-knob"></span></span></button></span></div>
 <div class="legend" id="legend" aria-label="Leyenda del mapa"><span class="lg"><i class="lg-star"></i>Estrella</span><span class="lg"><i class="lg-planet"></i>Planeta</span><span class="lg"><i class="lg-moon"></i>Luna</span><span class="lg"><i class="lg-sat"></i>Satélite</span><span class="lg"><i class="lg-air"></i>Aeronave</span><span class="lg"><i class="lg-gal"></i>Galaxia</span></div>
 <div id="loc-panel" hidden><div class="loc-row"><input id="loc-q" type="text" placeholder="Ciudad o coordenadas (ej. 28.63, -106.07)" autocomplete="off" aria-label="Buscar ubicación"><button id="loc-go">Buscar</button></div><ul id="loc-results"></ul><p class="small" id="loc-msg"></p></div></section>
 <aside>
@@ -1054,7 +1066,7 @@ const facing=document.querySelector('#facing');
 try{const saved=localStorage.getItem('facing');if(saved&&[...facing.options].some(o=>o.value===saved)){facing.value=saved;viewAz=Number(saved);}}catch(e){}
 facing.addEventListener('change',()=>{viewAz=Number(facing.value);try{localStorage.setItem('facing',facing.value);}catch(e){}render();});
 try{redMode=localStorage.getItem('cielo-red-mode')==='1';}catch(e){}
-function applyRedMode(){document.body.classList.toggle('red-mode',redMode);const b=document.querySelector('#redmode');if(b)b.setAttribute('aria-pressed',String(redMode));const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',redMode?'#1a0505':'#070b14');}
+function applyRedMode(){document.body.classList.toggle('red-mode',redMode);const b=document.querySelector('#redmode');if(b){b.setAttribute('aria-pressed',String(redMode));b.setAttribute('aria-checked',String(redMode));const st=b.querySelector('.rm-state');if(st)st.textContent=redMode?'ON':'OFF';}const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',redMode?'#1a0505':'#070b14');}
 document.querySelector('#redmode').addEventListener('click',()=>{redMode=!redMode;try{localStorage.setItem('cielo-red-mode',redMode?'1':'0');}catch(e){}applyRedMode();tickClock();});
 applyRedMode();
 document.querySelector('#refresh').addEventListener('click',()=>{tickClock();loadSatellites();loadAircraft();meteorInfo();});
