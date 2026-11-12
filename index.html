@@ -1665,7 +1665,7 @@ function render(){
  for(const x of planes){
   const q=project(x.alt,x.az,w,h);
   if(!q)continue;
-  hits.push({x:q.x,y:q.y,r:14,pri:0,kind:'Aeronave',title:x.flight,lines:['Altitud '+fmtAlt(x.ft),'Rumbo '+Math.round(x.heading)+'°','Az '+Math.round(x.az)+'° · Alt '+Math.round(x.alt)+'°']});
+  hits.push({x:q.x,y:q.y,r:14,pri:0,kind:'Aeronave',title:x.flight,lines:airTipLines(x)});
   const active=selectedAircraft===x.id;
   ctx.save();ctx.translate(q.x,q.y);ctx.rotate((180-(x.heading-viewAz))*R);if(active)ctx.scale(1.7,1.7);
   ctx.fillStyle=active?P.airActive:P.air;ctx.shadowColor=active?P.airActiveGlow:P.airGlow;ctx.shadowBlur=active?18:8;
@@ -1749,11 +1749,11 @@ async function loadAircraft(){
         const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-ALT;
         const alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;
         const name=(a.flight||a.hex||'Aeronave').trim();
-        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),flight:name,ft:Number.isFinite(Number(a.alt_baro))?Number(a.alt_baro):(Number.isFinite(Number(a.alt_geom))?Number(a.alt_geom):null)};
+        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),track:(a.track!=null&&Number.isFinite(Number(a.track)))?Number(a.track):null,flight:name,ft:(a.alt_baro!=null&&Number.isFinite(Number(a.alt_baro)))?Number(a.alt_baro):((a.alt_geom!=null&&Number.isFinite(Number(a.alt_geom)))?Number(a.alt_geom):null),dist,gs:(a.gs!=null&&Number.isFinite(Number(a.gs)))?Number(a.gs):null,rate:(a.baro_rate!=null&&Number.isFinite(Number(a.baro_rate)))?Number(a.baro_rate):null,reg:(typeof a.r==='string'&&a.r.trim())?a.r.trim():null};
       })
       .filter(a=>a.alt>0);
     recordTrails('air',planes);document.querySelector('#n-air').textContent=planes.length;
-    const list=planes.slice(0,5).map(a=>'<li class="sat-item air-item" tabindex="0" role="button" data-aircraft="'+escapeHtml(a.id)+'"><span class="sat-name">'+escapeHtml(a.flight)+'</span><span class="small">Az '+Math.round(a.az)+'° · Alt '+Math.round(a.alt)+'°</span><span class="air-alt">Altitud '+fmtAlt(a.ft)+'</span></li>').join('');
+    const list=[...planes].sort((a,b)=>a.dist-b.dist).map(a=>'<li class="sat-item air-item" tabindex="0" role="button" data-aircraft="'+escapeHtml(a.id)+'"><span class="sat-name">'+escapeHtml(a.flight)+'</span><span class="small">Az '+Math.round(a.az)+'° · Alt '+Math.round(a.alt)+'°</span><span class="air-alt">'+escapeHtml(airBits(a))+'</span></li>').join('');
     document.querySelector('#air-list').innerHTML=list||'<li class="empty">No se reciben aeronaves en el radio de 100 millas.</li>';
     document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';
     render();
@@ -1763,7 +1763,13 @@ async function loadAircraft(){
     document.querySelector('#air-note').textContent='';
   }
 }
-function fmtAlt(ft){return ft==null?'altitud n/d':Math.round(ft).toLocaleString('es-MX')+' ft · '+Math.round(ft*.3048).toLocaleString('es-MX')+' m';}
+function fmtAlt(ft){return ft==null?null:Math.round(ft).toLocaleString('es-MX')+' ft · '+Math.round(ft*.3048).toLocaleString('es-MX')+' m';}
+function fmtKm(m){return Math.round(m/1000).toLocaleString('es-MX')+' km';}
+function fmtSpeed(kt){return Math.round(kt*1.852).toLocaleString('es-MX')+' km/h';}
+function vertWord(rate){return rate>100?'Subiendo':rate<-100?'Bajando':'Nivelado';}
+function dirWord8(deg){const D=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];return D[Math.round((((deg%360)+360)%360)/45)%8];}
+function airBits(a){const b=['a '+fmtKm(a.dist)];const alt=fmtAlt(a.ft);if(alt)b.push('Altitud '+alt);if(a.gs!=null)b.push(fmtSpeed(a.gs));if(a.rate!=null)b.push(vertWord(a.rate));if(a.reg)b.push('Matrícula '+a.reg);return b.join(' · ');}
+function airTipLines(x){const L=[];const alt=fmtAlt(x.ft);if(alt)L.push('Altitud '+alt);L.push('Distancia a '+fmtKm(x.dist));if(x.gs!=null)L.push('Velocidad '+fmtSpeed(x.gs));if(x.rate!=null)L.push(vertWord(x.rate));if(x.track!=null)L.push('Rumbo '+Math.round(x.track)+'° hacia el '+dirWord8(x.track));if(x.reg)L.push('Matrícula '+x.reg);L.push('Az '+Math.round(x.az)+'° · Alt '+Math.round(x.alt)+'°');return L;}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const celestialEvents=[];let starlinkNotice='';let eventsBusy=false;
 function localDateTime(d){return d.toLocaleString('es-MX',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
