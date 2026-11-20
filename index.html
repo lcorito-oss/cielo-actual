@@ -127,6 +127,13 @@ body.red-mode #search-results{background:#1a0505f2;border-color:#ff5a4d55}
 .visbar .now{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff}
 body.red-mode .visbar i{background:#ff3b30}
 body.red-mode .visbar i.moon{background:#ffd9d4}
+.clouds{margin-top:6px}
+.cloud-row{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--muted);padding:2px 0}
+.cloud-row span{width:44px;flex:none}
+.cloud-row b{width:34px;text-align:right;color:var(--ink);font-weight:600;flex:none}
+.cloud-bar{flex:1;height:6px;border-radius:99px;background:#ffffff14;overflow:hidden}
+.cloud-bar i{display:block;height:100%;background:#7fb3ff;border-radius:99px}
+body.red-mode .cloud-bar i{background:#ff3b30}
 .ficha-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:.82rem;margin:8px 0}
 .ficha-kv dt{color:var(--muted)}
 .ficha-kv dd{margin:0;text-align:right}
@@ -2041,6 +2048,22 @@ function moonPlanetClose(){
   return best;
 }
 
+/* --- Nubes esta noche (Open-Meteo, sin clave) --- */
+let cloudCache={key:'',at:0,data:null};
+async function fetchClouds(){
+  const key=LAT.toFixed(2)+','+LON.toFixed(2),now=Date.now();
+  if(cloudCache.key===key&&cloudCache.data&&now-cloudCache.at<30*60*1000)return cloudCache.data;
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+LAT.toFixed(2)+'&longitude='+LON.toFixed(2)+'&hourly=cloudcover&timezone=auto&forecast_days=2');
+    if(!r.ok)throw new Error('http '+r.status);
+    const j=await r.json(),hours=[];
+    for(let i=0;i<j.hourly.time.length;i++)hours.push({t:new Date(j.hourly.time[i]),v:j.hourly.cloudcover[i]});
+    cloudCache={key:key,at:now,data:hours};
+    return hours;
+  }catch(e){cloudCache={key:key,at:now,data:null};return null;}
+}
+function cloudVerdict(avg){if(avg<20)return'Despejado';if(avg<50)return'Parcialmente nublado';if(avg<80)return'Mayormente nublado';return'Nublado';}
+
 /* --- Tarjeta "Esta noche" --- */
 function bodyTonight(en,esName){
   const now=new Date(),noon=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0);
@@ -2114,7 +2137,22 @@ async function updateTonight(){
   if(!passes.length)lines.push('ISS: sin pases visibles en los próximos 4 días.');
   else if(next&&now>=next.start)lines.push('ISS: sobre el horizonte ahora · máx. '+Math.round(next.maxAlt)+'° · se va por el '+dirWord(next.endAz)+' a las '+fmtHM(next.end)+'.');
   else lines.push('ISS: próxima pasada visible '+fmtHM(next.start)+'–'+fmtHM(next.end)+' ('+countdown(next.start)+') · máx. '+Math.round(next.maxAlt)+'° · sale por el '+dirWord(next.startAz)+'.');
-  extra.innerHTML=lines.map(l=>'<div class="t-sub" style="margin-top:4px">'+escapeHtml(l)+'</div>').join('');
+  let cloudHtml='';
+  const hours=await fetchClouds();
+  if(hours){
+    const now=new Date(),w0=new Date(now);w0.setHours(18,0,0,0);
+    if(now.getHours()<6)w0.setDate(w0.getDate()-1);
+    const w1=new Date(w0.getTime()+12*3600*1000);
+    const start=now>w0?new Date(now.getFullYear(),now.getMonth(),now.getDate(),now.getHours(),0,0):w0;
+    const night=hours.filter(h=>h.t>=start&&h.t<=w1);
+    if(night.length){
+      const avg=Math.round(night.reduce((s,h)=>s+h.v,0)/night.length);
+      const best=night.reduce((a,b)=>b.v<a.v?b:a);
+      cloudHtml='<div class="t-sub" style="margin-top:8px"><b>Nubes esta noche: '+cloudVerdict(avg)+' ('+avg+'% promedio)</b> · mejor hora '+fmtHM(best.t)+' ('+best.v+'%).</div>';
+      cloudHtml+='<div class="clouds">'+night.map(h=>'<div class="cloud-row"><span>'+fmtHM(h.t)+'</span><div class="cloud-bar"><i style="width:'+h.v+'%"></i></div><b>'+h.v+'%</b></div>').join('')+'</div>';
+    }
+  }
+  extra.innerHTML=cloudHtml+lines.map(l=>'<div class="t-sub" style="margin-top:4px">'+escapeHtml(l)+'</div>').join('');
 }
 
 /* --- Insignia de evento en vivo --- */
