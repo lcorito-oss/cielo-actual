@@ -1726,6 +1726,56 @@ async function loadSatellites(){try{const t=(await getTLE('visual')).trim().spli
 for(const obj of records){const pv=satellite.propagate(obj.sat,now);if(!pv.position)continue;const gmst=satellite.gstime(now),g=satellite.eciToGeodetic(pv.position,gmst),lat=satellite.degreesLat(g.latitude),lon=satellite.degreesLong(g.longitude);const look=satellite.ecfToLookAngles({latitude:LAT*R,longitude:LON*R,height:ALT/1000},satellite.eciToEcf(pv.position,gmst)),elev=look.elevation/R;if(elev>0){satPositions.push({id:obj.name,alt:elev,az:(look.azimuth/R+360)%360});passes.push({name:obj.name,alt:elev});buildSatTrail(obj,now);}}updateStarlinkEvent();
 passes.sort((a,b)=>b.alt-a.alt);document.querySelector('#n-sat').textContent=passes.length;document.querySelector('#sat-list').innerHTML=passes.length?passes.map(x=>{const sat=satPositions.find(s=>s.id===x.name);return '<li class="sat-item" tabindex="0" role="button" data-satellite="'+escapeHtml(x.name)+'"><span class="sat-name">'+escapeHtml(x.name)+'</span><span class="small">Az '+Math.round(sat.az)+'° · Alt '+Math.round(sat.alt)+'°</span></li>';}).join(''):'<li class="empty">No hay satélites sobre el horizonte ahora. Próxima revisión en 60 s.</li>';render();
 }catch(e){console.error('Satélites:',e);document.querySelector('#sat-list').innerHTML='<li class="empty">Fuente orbital no disponible; se reintentará automáticamente.</li>';}}
+/* Origen del vuelo (desde donde despego) via OpenSky, gratis. OpenSky no permite
+   llamadas directas desde otra pagina (CORS), asi que va por el mismo Worker que
+   los datos ADS-B; el Worker debe permitir opensky-network.org. El destino de un
+   vuelo en curso no lo da ninguna fuente gratis, solo el origen. */
+const AIRPORTS={MMMX:'Ciudad de México',MMUN:'Cancún',MMGL:'Guadalajara',MMMY:'Monterrey',MMTJ:'Tijuana',MMSD:'Los Cabos',MMMZ:'Mazatlán',MMHO:'Hermosillo',MMCU:'Chihuahua',MMCS:'Ciudad Juárez',MMPR:'Puerto Vallarta',MMTO:'Morelia',MMLO:'León',MMTG:'Tuxtla Gutiérrez',MMVR:'Veracruz',MMOX:'Oaxaca',MMPB:'Puebla',MMQT:'Querétaro',MMAN:'Aguascalientes',MMLT:'Loreto',MMZH:'Zihuatanejo',MMMD:'Mérida',MMEP:'Tepic',MMCM:'Ciudad del Carmen',MMCP:'Campeche',MMTM:'Tampico',MMTC:'Torreón',MMDO:'Durango',MMZO:'Manzanillo',MMAA:'Acapulco',MMHU:'Huatulco',MMCZ:'Cozumel',KDFW:'Dallas',KIAH:'Houston',KPHX:'Phoenix',KLAX:'Los Ángeles',KDEN:'Denver',KATL:'Atlanta',KORD:'Chicago',KMIA:'Miami',KJFK:'Nueva York',KEWR:'Newark',KLAS:'Las Vegas',KSFO:'San Francisco',KSEA:'Seattle',KSLC:'Salt Lake City',KMSP:'Mineápolis',KDTW:'Detroit',KBOS:'Boston',KLGA:'Nueva York',KDCA:'Washington',KIAD:'Washington',KCLT:'Charlotte',KPHL:'Filadelfia',KMCO:'Orlando',KFLL:'Fort Lauderdale',KAUS:'Austin',KSAT:'San Antonio',KELP:'El Paso',KTUS:'Tucson',KABQ:'Albuquerque',KOKC:'Oklahoma City',CYYZ:'Toronto',CYVR:'Vancouver',CYUL:'Montreal'};
+function airportName(icao){return AIRPORTS[icao]||icao;}
+const originCache=new Map(),originFetching=new Set();
+let originCooldownUntil=0;
+function originFromCache(cs){const c=originCache.get(cs);if(!c)return null;if(Date.now()-c.at>12*3600*1000){originCache.delete(cs);return null;}return c.from;}
+function refreshAirRow(a){try{const el=document.querySelector('[data-aircraft="'+CSS.escape(a.id)+'"] .air-alt');if(el)el.textContent=airBits(a);}catch(e){}}
+async function fetchOrigin(a,cs){
+  const hex=(a.hex||'').toLowerCase();
+  if(!hex) return null;
+  originFetching.add(cs);
+  try{
+    const now=Math.floor(Date.now()/1000);
+    const url='https://opensky-network.org/api/flights/aircraft?icao24='+hex+'&begin='+(now-6*3600)+'&end='+now;
+    const r=await fetch(PROXY+encodeURIComponent(url));
+    if(!r.ok){originCooldownUntil=Date.now()+10*60*1000;return null;}
+    const j=await r.json();
+    if(!Array.isArray(j)) return null;
+    let best=null;
+    for(const f of j){
+      if((f.callsign||'').trim().toUpperCase()!==cs) continue;
+      if(!f.estDepartureAirport) continue;
+      if(!best||(f.firstSeen||0)>(best.firstSeen||0)) best=f;
+    }
+    const from=best?best.estDepartureAirport:null;
+    if(from) originCache.set(cs,{from,at:Date.now()});
+    return from;
+  }catch(e){originCooldownUntil=Date.now()+10*60*1000;return null;}
+  finally{originFetching.delete(cs);}
+}
+function ensureOrigins(planes){
+  if(Date.now()<originCooldownUntil) return;
+  const sorted=[...planes].sort((a,b)=>a.dist-b.dist).slice(0,8);
+  for(const a of sorted){
+    const cs=(a.flight||'').trim().toUpperCase();
+    if(!cs||!a.hex) continue;
+    const cached=originFromCache(cs);
+    if(cached){if(!a.from){a.from=cached;refreshAirRow(a);}continue;}
+    if(originFetching.has(cs)) continue;
+    fetchOrigin(a,cs).then(from=>{
+      if(!from) return;
+      a.from=from;
+      refreshAirRow(a);
+      render();
+    });
+  }
+}
 async function loadAircraft(){
   try{
     const la=LAT.toFixed(2),lo=LON.toFixed(2);
@@ -1756,13 +1806,15 @@ async function loadAircraft(){
         const height=(Number(a.alt_geom||a.alt_baro||30000)*.3048)-ALT;
         const alt=Math.atan2(height-dist*dist/(2*6371000),Math.max(1,dist))/R;
         const name=(a.flight||a.hex||'Aeronave').trim();
-        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),track:(a.track!=null&&Number.isFinite(Number(a.track)))?Number(a.track):null,flight:name,ft:(a.alt_baro!=null&&Number.isFinite(Number(a.alt_baro)))?Number(a.alt_baro):((a.alt_geom!=null&&Number.isFinite(Number(a.alt_geom)))?Number(a.alt_geom):null),dist,gs:(a.gs!=null&&Number.isFinite(Number(a.gs)))?Number(a.gs):null,rate:(a.baro_rate!=null&&Number.isFinite(Number(a.baro_rate)))?Number(a.baro_rate):null,reg:(typeof a.r==='string'&&a.r.trim())?a.r.trim():null};
+        return {id:(a.hex||a.flight||'Aeronave').trim(),alt,az:(az/R+360)%360,heading:Number(a.track||0),track:(a.track!=null&&Number.isFinite(Number(a.track)))?Number(a.track):null,flight:name,ft:(a.alt_baro!=null&&Number.isFinite(Number(a.alt_baro)))?Number(a.alt_baro):((a.alt_geom!=null&&Number.isFinite(Number(a.alt_geom)))?Number(a.alt_geom):null),dist,gs:(a.gs!=null&&Number.isFinite(Number(a.gs)))?Number(a.gs):null,rate:(a.baro_rate!=null&&Number.isFinite(Number(a.baro_rate)))?Number(a.baro_rate):null,reg:(typeof a.r==='string'&&a.r.trim())?a.r.trim():null,hex:(typeof a.hex==='string'&&a.hex.trim())?a.hex.trim().toLowerCase():null,from:null};
       })
       .filter(a=>a.alt>0);
+    for(const a of planes){const cs=(a.flight||'').trim().toUpperCase();const c=cs?originFromCache(cs):null;if(c)a.from=c;}
     recordTrails('air',planes);document.querySelector('#n-air').textContent=planes.length;
     const list=[...planes].sort((a,b)=>a.dist-b.dist).map(a=>'<li class="sat-item air-item" tabindex="0" role="button" data-aircraft="'+escapeHtml(a.id)+'"><span class="sat-name">'+escapeHtml(a.flight)+'</span><span class="small">Az '+Math.round(a.az)+'° · Alt '+Math.round(a.alt)+'°</span><span class="air-alt">'+escapeHtml(airBits(a))+'</span></li>').join('');
     document.querySelector('#air-list').innerHTML=list||'<li class="empty">No se reciben aeronaves en el radio de 100 millas.</li>';
     document.querySelector('#air-note').textContent='Datos colaborativos ADS-B; la cobertura depende de receptores cercanos.';
+    ensureOrigins(planes);
     render();
   }catch(e){
     console.error('Aeronaves:',e);
@@ -1775,8 +1827,8 @@ function fmtKm(m){return Math.round(m/1000).toLocaleString('es-MX')+' km';}
 function fmtSpeed(kt){return Math.round(kt*1.852).toLocaleString('es-MX')+' km/h';}
 function vertWord(rate){return rate>100?'Subiendo':rate<-100?'Bajando':'Nivelado';}
 function dirWord8(deg){const D=['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];return D[Math.round((((deg%360)+360)%360)/45)%8];}
-function airBits(a){const b=['a '+fmtKm(a.dist)];const alt=fmtAlt(a.ft);if(alt)b.push('Altitud '+alt);if(a.gs!=null)b.push(fmtSpeed(a.gs));if(a.rate!=null)b.push(vertWord(a.rate));if(a.reg)b.push('Matrícula '+a.reg);return b.join(' · ');}
-function airTipLines(x){const L=[];const alt=fmtAlt(x.ft);if(alt)L.push('Altitud '+alt);L.push('Distancia a '+fmtKm(x.dist));if(x.gs!=null)L.push('Velocidad '+fmtSpeed(x.gs));if(x.rate!=null)L.push(vertWord(x.rate));if(x.track!=null)L.push('Rumbo '+Math.round(x.track)+'° hacia el '+dirWord8(x.track));if(x.reg)L.push('Matrícula '+x.reg);L.push('Az '+Math.round(x.az)+'° · Alt '+Math.round(x.alt)+'°');return L;}
+function airBits(a){const b=['a '+fmtKm(a.dist)];const alt=fmtAlt(a.ft);if(alt)b.push('Altitud '+alt);if(a.gs!=null)b.push(fmtSpeed(a.gs));if(a.rate!=null)b.push(vertWord(a.rate));if(a.reg)b.push('Matrícula '+a.reg);if(a.from)b.push('Desde '+airportName(a.from));return b.join(' · ');}
+function airTipLines(x){const L=[];const alt=fmtAlt(x.ft);if(alt)L.push('Altitud '+alt);L.push('Distancia a '+fmtKm(x.dist));if(x.gs!=null)L.push('Velocidad '+fmtSpeed(x.gs));if(x.rate!=null)L.push(vertWord(x.rate));if(x.track!=null)L.push('Rumbo '+Math.round(x.track)+'° hacia el '+dirWord8(x.track));if(x.reg)L.push('Matrícula '+x.reg);if(x.from)L.push('Desde '+airportName(x.from));L.push('Az '+Math.round(x.az)+'° · Alt '+Math.round(x.alt)+'°');return L;}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const celestialEvents=[];let starlinkNotice='';let eventsBusy=false;
 function localDateTime(d){return d.toLocaleString('es-MX',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
